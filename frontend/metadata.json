@@ -1,0 +1,6 @@
+{
+  "name": "VASAI — AI Security System",
+  "description": "AI-powered camera intrusion detection with sub-3s WhatsApp alerts, RTSP stream management, interactive polygon zones, and live surveillance analytics.",
+  "requestFramePermissions": ["camera"],
+  "majorCapabilities": ["MAJOR_CAPABILITY_SERVER_SIDE_GEMINI_API"]
+}
