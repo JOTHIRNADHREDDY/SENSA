@@ -95,7 +95,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
         <div className="max-w-6xl mx-auto">
           <div className="relative rounded-2xl overflow-hidden border border-white/10 shadow-2xl shadow-sky-900/20 bg-[#0b0e14]">
             <img 
-              src="/src/assets/images/security_dashboard_hero_1786586746980.jpg" 
+              src="/images/security_dashboard_hero_1786586746980.jpg" 
               alt="SENSA Dashboard Interface" 
               className="w-full h-auto object-cover"
               referrerPolicy="no-referrer"
@@ -133,7 +133,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           <div className="order-2 md:order-1 relative">
             <div className="relative rounded-3xl overflow-hidden border border-white/10 shadow-2xl bg-[#0b0e14] max-w-sm mx-auto">
               <img 
-                src="/src/assets/images/whatsapp_alert_feature_1786586774560.jpg" 
+                src="/images/whatsapp_alert_feature_1786586774560.jpg" 
                 alt="WhatsApp Instant Alert" 
                 className="w-full h-auto object-cover"
                 referrerPolicy="no-referrer"
@@ -191,7 +191,7 @@ export const HeroSection: React.FC<HeroSectionProps> = ({
           <div className="relative">
             <div className="relative rounded-2xl overflow-hidden border border-white/10 shadow-2xl shadow-sky-900/20 bg-[#0b0e14]">
               <img 
-                src="/src/assets/images/polygon_zone_feature_1786586790074.jpg" 
+                src="/images/polygon_zone_feature_1786586790074.jpg" 
                 alt="Draw Custom Polygon Zones" 
                 className="w-full h-auto object-cover"
                 referrerPolicy="no-referrer"
