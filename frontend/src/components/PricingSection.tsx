@@ -27,7 +27,7 @@ export const PricingSection: React.FC<PricingSectionProps> = ({ onSelectPlan }) 
   
   useEffect(() => {
     setIsLoading(true);
-    fetch(`/api/v1/billing/price`, {
+    fetch((import.meta.env.VITE_API_BASE_URL || '') + `/api/v1/billing/price`, {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ country })

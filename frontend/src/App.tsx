@@ -49,7 +49,7 @@ export default function App() {
         const headers = { 'Authorization': `Bearer ${token}` };
         
         // Use personal siteId for prototype
-        const camRes = await fetch('/api/v1/cameras?siteId=personal', { headers });
+        const camRes = await fetch((import.meta.env.VITE_API_BASE_URL || '') + '/api/v1/cameras?siteId=personal', { headers });
         if (camRes.ok) {
           const camData = await camRes.json();
           // Transform backend camera format (Firestore fields) to frontend model
@@ -71,7 +71,7 @@ export default function App() {
           setCameras(mappedCameras);
         }
 
-        const altRes = await fetch('/api/v1/alerts?siteId=personal', { headers });
+        const altRes = await fetch((import.meta.env.VITE_API_BASE_URL || '') + '/api/v1/alerts?siteId=personal', { headers });
         if (altRes.ok) {
           const altData = await altRes.json();
           // Transform backend alerts to frontend model
@@ -124,7 +124,7 @@ export default function App() {
     try {
       const targetCam = cameras.find((c) => c.id === camId) || cameras[0];
       const token = await user.getIdToken();
-      const res = await fetch('/api/v1/alerts', {
+      const res = await fetch((import.meta.env.VITE_API_BASE_URL || '') + '/api/v1/alerts', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -140,7 +140,7 @@ export default function App() {
       });
       if (res.ok) {
         // Refresh alerts
-        const altRes = await fetch('/api/v1/alerts?siteId=personal', { headers: { 'Authorization': `Bearer ${token}` } });
+        const altRes = await fetch((import.meta.env.VITE_API_BASE_URL || '') + '/api/v1/alerts?siteId=personal', { headers: { 'Authorization': `Bearer ${token}` } });
         if (altRes.ok) {
           const altData = await altRes.json();
           const mappedAlerts = (altData.alerts || []).map((a: any) => ({
@@ -164,7 +164,7 @@ export default function App() {
     if (!user) return;
     try {
       const token = await user.getIdToken();
-      const res = await fetch(`/api/v1/alerts/${alertId}`, {
+      const res = await fetch((import.meta.env.VITE_API_BASE_URL || '') + `/api/v1/alerts/${alertId}`, {
         method: 'PATCH',
         headers: {
           'Content-Type': 'application/json',
@@ -185,7 +185,7 @@ export default function App() {
     if (!user) return;
     try {
       const token = await user.getIdToken();
-      const res = await fetch('/api/send-whatsapp-test', {
+      const res = await fetch((import.meta.env.VITE_API_BASE_URL || '') + '/api/send-whatsapp-test', {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -219,7 +219,7 @@ export default function App() {
     if (user) {
       try {
         const token = await user.getIdToken();
-        const res = await fetch('/api/v1/cameras', {
+        const res = await fetch((import.meta.env.VITE_API_BASE_URL || '') + '/api/v1/cameras', {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -248,7 +248,7 @@ export default function App() {
     if (user) {
       try {
         const token = await user.getIdToken();
-        await fetch(`/api/v1/cameras/${camId}`, {
+        await fetch((import.meta.env.VITE_API_BASE_URL || '') + `/api/v1/cameras/${camId}`, {
           method: 'DELETE',
           headers: {
             'Authorization': `Bearer ${token}`
@@ -375,7 +375,7 @@ export default function App() {
                       const idToken = await user.getIdToken();
                       // Map UI name to plan ID
                       const planId = planName.toLowerCase().replace(' ', '_');
-                      const response = await fetch('/api/v1/billing/checkout', {
+                      const response = await fetch((import.meta.env.VITE_API_BASE_URL || '') + '/api/v1/billing/checkout', {
                         method: 'POST',
                         headers: {
                           'Content-Type': 'application/json',

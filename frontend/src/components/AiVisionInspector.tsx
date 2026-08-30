@@ -65,7 +65,7 @@ export const AiVisionInspector: React.FC = () => {
 
     try {
       const token = user ? await user.getIdToken() : '';
-      const response = await fetch('/api/analyze-snapshot', {
+      const response = await fetch((import.meta.env.VITE_API_BASE_URL || '') + '/api/analyze-snapshot', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
@@ -130,7 +130,7 @@ export const AiVisionInspector: React.FC = () => {
     setSentWhatsapp(true);
     try {
       const token = user ? await user.getIdToken() : '';
-      const response = await fetch('/api/send-whatsapp-test', {
+      const response = await fetch((import.meta.env.VITE_API_BASE_URL || '') + '/api/send-whatsapp-test', {
         method: 'POST',
         headers: { 
           'Content-Type': 'application/json',
