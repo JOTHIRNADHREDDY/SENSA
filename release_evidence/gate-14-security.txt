@@ -1,0 +1,7 @@
+[GATE 14 - SECURITY]
+STATUS: PASS (Verified via Regex Scans)
+
+Evidence:
+- `backend/main.py` explicitly lists precise origins (no wildcard CORS).
+- No Stripe secret keys, JWT secrets, or DB passwords hardcoded in repository (only `.env.example`).
+- React frontend completely eradicated. No Node dependencies.

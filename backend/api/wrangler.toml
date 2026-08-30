@@ -1,0 +1,15 @@
+name = "sensa-api"
+main = "workers/api/index.ts"
+compatibility_date = "2023-10-30"
+
+[build]
+command = "npm run build"
+
+[vars]
+ENVIRONMENT = "production"
+
+[[unsafe.bindings]]
+name = "RATE_LIMITER"
+type = "ratelimit"
+namespace_id = "1001" # Placeholder, configure in dashboard
+simple = { limit = 100, period = 60 }

@@ -1,0 +1,13 @@
+[GATE 03 - HTTPS]
+STATUS: BLOCKED (NO DOMAIN/TLS)
+
+Configuration Steps when Infrastructure is Available:
+1. Point A Record for api.sensa.io to the VPS public IP.
+2. Install Caddy: apt install caddy
+3. Configure /etc/caddy/Caddyfile:
+api.sensa.io {
+    reverse_proxy 127.0.0.1:8000
+    header Strict-Transport-Security "max-age=31536000; includeSubDomains"
+}
+4. Restart Caddy: systemctl restart caddy
+5. Verify curl https://api.sensa.io/health returns 200 OK.

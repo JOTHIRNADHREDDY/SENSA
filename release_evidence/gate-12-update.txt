@@ -1,0 +1,8 @@
+[GATE 12 - UPDATES/ROLLBACK]
+STATUS: BLOCKED (iscc missing, no baseline EXE to upgrade from)
+
+Configuration Steps when Infrastructure is Available:
+1. Compile v1.0.0 and install.
+2. Compile v1.0.1 and push update artifact.
+3. Validate service restart and license state preservation.
+4. Force a failed v1.0.2 update and validate automatic rollback to v1.0.1.

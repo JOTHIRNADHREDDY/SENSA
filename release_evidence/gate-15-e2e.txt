@@ -1,0 +1,11 @@
+[GATE 15 - FINAL E2E]
+STATUS: BLOCKED (Requires Gates 1-14 Infrastructure)
+
+Configuration Steps when Infrastructure is Available:
+1. Start at public website domain (Gate 3).
+2. Execute live checkout (Gate 4).
+3. Download installer (Gate 7).
+4. Run on clean VM (Gate 8).
+5. Activate agent via License (Gate 10).
+6. Connect real RTSP camera (Gate 9).
+7. Trigger motion and verify Cloud Alert delivery (Gate 11).

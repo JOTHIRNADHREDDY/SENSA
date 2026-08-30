@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { AiAnalysisResult } from '../types';
 import { Sparkles, Upload, Eye, CheckCircle2, AlertTriangle, ShieldCheck, Copy, Send, RefreshCw, Smartphone } from 'lucide-react';
+import { useAuth } from '../lib/AuthContext';
 
 interface SampleSnapshot {
   id: string;
@@ -35,6 +36,7 @@ const SAMPLE_SNAPSHOTS: SampleSnapshot[] = [
 ];
 
 export const AiVisionInspector: React.FC = () => {
+  const { user } = useAuth();
   const [selectedSample, setSelectedSample] = useState<SampleSnapshot>(SAMPLE_SNAPSHOTS[0]);
   const [customImage, setCustomImage] = useState<string | null>(null);
   const [analyzing, setAnalyzing] = useState<boolean>(false);
@@ -62,9 +64,13 @@ export const AiVisionInspector: React.FC = () => {
     setSentWhatsapp(false);
 
     try {
+      const token = user ? await user.getIdToken() : '';
       const response = await fetch('/api/analyze-snapshot', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({
           base64Image: activeImage,
           cameraName: selectedSample.title,
@@ -123,16 +129,20 @@ export const AiVisionInspector: React.FC = () => {
   const handleSendTestWhatsapp = async () => {
     setSentWhatsapp(true);
     try {
+      const token = user ? await user.getIdToken() : '';
       const response = await fetch('/api/send-whatsapp-test', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: { 
+          'Content-Type': 'application/json',
+          ...(token ? { 'Authorization': `Bearer ${token}` } : {})
+        },
         body: JSON.stringify({
           cameraName: selectedSample.title,
           alertType: analysisResult?.threatLevel || 'CRITICAL',
         }),
       });
       const data = await response.json();
-      if (data.error === "Unauthorized") {
+      if (data.error === "Unauthorized" || response.status === 401) {
          alert("Authentication Required: Please sign in to dispatch WhatsApp alerts.");
          setSentWhatsapp(false);
          return;

@@ -1,0 +1,9 @@
+[GATE 08 - CLEAN WINDOWS INSTALL]
+STATUS: BLOCKED (NO CLEAN VM)
+
+Configuration Steps when Infrastructure is Available:
+1. Provision a bare Windows 10/11 x64 VM.
+2. Transfer SENSA-Setup-x64.exe to the VM.
+3. Execute the installer.
+4. Verify Python dependencies and FFmpeg are correctly laid down.
+5. Verify C:\Program Files\SENSA and C:\ProgramData\SENSA exist and have correct ACLs.

@@ -1,0 +1,26 @@
+# Environment Variables
+.env
+.env.*
+!.env.example
+.dev.vars
+.dev.vars.*
+backend/agent/.env
+backend/api/.dev.vars
+
+# Node
+node_modules/
+dist/
+
+# Python
+__pycache__/
+*.pyc
+.venv/
+venv/
+env/
+
+# Firebase
+.firebase/
+firebase-debug.log
+
+# Cloudflare
+.wrangler/

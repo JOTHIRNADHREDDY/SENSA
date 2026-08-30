@@ -1,0 +1,10 @@
+{
+  "status": "BLOCKED",
+  "reason": "Hardware AI benchmarking requires physical RTSP/ONVIF cameras to measure real-world inference FPS and GPU utilization. The execution environment lacks this external infrastructure.",
+  "measurements": {
+    "1_camera": null,
+    "2_cameras": null,
+    "5_cameras": null,
+    "10_cameras": null
+  }
+}

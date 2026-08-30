@@ -1,0 +1,10 @@
+[GATE 02 - DATABASE]
+STATUS: BLOCKED (NO LIVE POSTGRESQL)
+
+Configuration Steps when Infrastructure is Available:
+1. Install PostgreSQL 16 on the Ubuntu host.
+2. sudo -u postgres psql -c "CREATE DATABASE sensa_prod;"
+3. sudo -u postgres psql -c "CREATE USER sensa_db_user WITH PASSWORD 'REAL_SECRET';"
+4. sudo -u postgres psql -c "GRANT ALL PRIVILEGES ON DATABASE sensa_prod TO sensa_db_user;"
+5. Run migrations: psql $DATABASE_URL < database/migrations/fresh_install.sql
+6. Verify users, sites, cameras, and subscription tables are initialized.

@@ -1,0 +1,9 @@
+[GATE 04 - LIVE BILLING]
+STATUS: BLOCKED (NO LIVE STRIPE ACCOUNTS)
+
+Configuration Steps when Infrastructure is Available:
+1. Export STRIPE_SECRET_KEY=YOUR_STRIPE_SECRET_KEY
+2. Export STRIPE_WEBHOOK_SECRET=YOUR_STRIPE_WEBHOOK_SECRET
+3. In Stripe Dashboard, map Pilot, Basic, Standard, Pro, Enterprise products to price IDs.
+4. Update SENSA backend configuration to map exactly to these provider product IDs.
+5. Perform a real checkout with a test card if sandbox, or a live card if production.

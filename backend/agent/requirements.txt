@@ -1,0 +1,25 @@
+# SENSA Agent — Production Dependencies
+
+# ── HTTP Client ──
+httpx>=0.27.0
+
+# ── AI / Detection ──
+ultralytics>=8.2.0
+opencv-python-headless>=4.10.0
+numpy>=1.26.4
+shapely>=2.0.6
+
+# ── Storage ──
+boto3>=1.35.0
+cryptography>=43.0.0
+
+# ── Optional — uncomment to enable ONVIF camera auto-discovery ──
+# onvif-zeep==0.2.12
+
+# ── Optional — uncomment for licence plate recognition ──
+# fast-plate-ocr==0.2.0
+# easyocr==1.7.1
+# pytesseract==0.3.13
+
+# ── Windows Service ──
+# pywin32>=306

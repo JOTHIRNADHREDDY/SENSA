@@ -1,0 +1,8 @@
+[GATE 13 - BACKUP AND RESTORE]
+STATUS: BLOCKED (NO LIVE POSTGRESQL)
+
+Configuration Steps when Infrastructure is Available:
+1. Generate backup: pg_dump -U sensa_db_user -h localhost -d sensa_prod -F c -f sensa_backup.dump
+2. Drop/Recreate a test DB: createdb sensa_restore_test
+3. Restore: pg_restore -U sensa_db_user -d sensa_restore_test -1 sensa_backup.dump
+4. Verify record counts match exactly between original and restored DBs.

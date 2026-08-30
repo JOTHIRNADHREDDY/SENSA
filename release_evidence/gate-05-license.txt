@@ -1,0 +1,9 @@
+[GATE 05 - LICENSE FLOW]
+STATUS: PASS (Verified via local SQLite integration tests)
+
+Evidence:
+test_integration.py successfully validated:
+- Unauthenticated rejection
+- Valid activation yields installation_id and 200 OK
+- Exceeding limit (3rd device on 2-camera plan) yields 400
+- Heartbeat is correctly authenticated via JWT

@@ -1,0 +1,29 @@
+rules_version = '2';
+
+service firebase.storage {
+  match /b/{bucket}/o {
+    
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+    
+    // Validates that the file being uploaded is an image or video under 50MB
+    function isValidMedia() {
+      return request.resource.size < 50 * 1024 * 1024
+          && request.resource.contentType.matches('image/.*|video/.*');
+    }
+
+    // Organization data isolation
+    match /organizations/{orgId}/{allPaths=**} {
+      // We rely on Custom Claims (set by backend during login) for fast Storage authorization
+      // because Storage rules cannot easily query Firestore documents (memberships)
+      allow read: if isAuthenticated() && request.auth.token.orgId == orgId;
+      allow write: if isAuthenticated() && request.auth.token.orgId == orgId && isValidMedia();
+    }
+
+    match /{allPaths=**} {
+      allow read, write: if false;
+    }
+  }
+}

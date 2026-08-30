@@ -1,0 +1,7 @@
+[GATE 10 - AI BENCHMARK]
+STATUS: BLOCKED (NO PHYSICAL CAMERAS)
+
+Configuration Steps when Infrastructure is Available:
+1. With real RTSP cameras connected (Gate 9), execute the benchmark suite.
+2. Measure input FPS, inference latency, CPU/GPU utilization for 1, 2, 5, and 10 camera scales.
+3. Generate benchmark_results.json based on physical hardware readings.

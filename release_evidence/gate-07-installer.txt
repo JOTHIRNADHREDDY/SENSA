@@ -1,0 +1,7 @@
+[GATE 07 - INSTALLER COMPILE]
+STATUS: BLOCKED (iscc missing)
+
+Configuration Steps when Infrastructure is Available:
+1. Ensure Inno Setup Compiler (`iscc`) is installed and in PATH.
+2. Run: `iscc installer/SENSA-Setup-x64.iss`
+3. Verify output binary `SENSA-Setup-x64.exe` is generated successfully in the `installer/Output` folder.

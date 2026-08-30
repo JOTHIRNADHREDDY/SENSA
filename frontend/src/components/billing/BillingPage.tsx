@@ -51,7 +51,11 @@ export const BillingPage: React.FC<BillingPageProps> = ({ onContactSupport, onCo
 
   useEffect(() => {
     setPricesLoading(true);
-    fetch(`/api/pricing/${country}`)
+    fetch(`/api/v1/billing/price`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ country })
+    })
       .then(res => res.json())
       .then(data => {
         if (data.success) {

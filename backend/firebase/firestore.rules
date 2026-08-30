@@ -1,0 +1,97 @@
+rules_version = '2';
+
+service cloud.firestore {
+  match /databases/{database}/documents {
+
+    // Helper functions
+    function isAuthenticated() {
+      return request.auth != null;
+    }
+
+    function isOwner(userId) {
+      return isAuthenticated() && request.auth.uid == userId;
+    }
+
+    function getMembership(orgId) {
+      // Assuming membership documents are keyed as {userId}_{orgId}
+      return get(/databases/$(database)/documents/memberships/$(request.auth.uid + '_' + orgId)).data;
+    }
+
+    function hasOrgRole(orgId, roles) {
+      let membership = getMembership(orgId);
+      return membership != null && membership.role in roles;
+    }
+
+    function getSite(siteId) {
+      return get(/databases/$(database)/documents/sites/$(siteId)).data;
+    }
+
+    function getCamera(cameraId) {
+      return get(/databases/$(database)/documents/cameras/$(cameraId)).data;
+    }
+
+    // 1. Users Collection
+    match /users/{userId} {
+      // Users can read/write their own profile
+      allow read, write: if isOwner(userId);
+    }
+
+    // 2. Organizations Collection
+    match /organizations/{orgId} {
+      // Any member can read the org
+      allow read: if hasOrgRole(orgId, ['owner', 'admin', 'operator', 'viewer']);
+      // Only owner/admin can update
+      allow update: if hasOrgRole(orgId, ['owner', 'admin']);
+      // Only owner can delete
+      allow delete: if hasOrgRole(orgId, ['owner']);
+      // Creation usually handled via backend to setup membership safely
+      allow create: if false; 
+    }
+
+    // 3. Memberships Collection
+    match /memberships/{membershipId} {
+      // membershipId = {userId}_{orgId}
+      allow read: if isOwner(resource.data.userId) || hasOrgRole(resource.data.organizationId, ['owner', 'admin', 'operator', 'viewer']);
+      // Handled by backend to prevent privilege escalation
+      allow create, update, delete: if false;
+    }
+
+    // 4. Sites Collection
+    match /sites/{siteId} {
+      allow read: if hasOrgRole(resource.data.organizationId, ['owner', 'admin', 'operator', 'viewer']);
+      allow create: if hasOrgRole(request.resource.data.organizationId, ['owner', 'admin']);
+      allow update, delete: if hasOrgRole(resource.data.organizationId, ['owner', 'admin']);
+    }
+
+    // 5. Cameras Collection
+    match /cameras/{cameraId} {
+      allow read: if hasOrgRole(getSite(resource.data.siteId).organizationId, ['owner', 'admin', 'operator', 'viewer']);
+      allow create: if hasOrgRole(getSite(request.resource.data.siteId).organizationId, ['owner', 'admin']);
+      allow update, delete: if hasOrgRole(getSite(resource.data.siteId).organizationId, ['owner', 'admin']);
+    }
+
+    // 6. Alerts Collection
+    match /alerts/{alertId} {
+      allow read: if hasOrgRole(getSite(getCamera(resource.data.cameraId).siteId).organizationId, ['owner', 'admin', 'operator', 'viewer']);
+      // Alerts created by backend/agent
+      allow create, update, delete: if false; 
+    }
+
+    // 7. Licenses, Subscriptions, Payments
+    // These should only be readable by org owner/admin, written by backend
+    match /licenses/{licenseId} {
+      allow read: if hasOrgRole(resource.data.organizationId, ['owner', 'admin']);
+      allow write: if false;
+    }
+    
+    match /subscriptions/{subId} {
+      allow read: if hasOrgRole(resource.data.organizationId, ['owner', 'admin']);
+      allow write: if false;
+    }
+
+    // Fallback deny
+    match /{document=**} {
+      allow read, write: if false;
+    }
+  }
+}

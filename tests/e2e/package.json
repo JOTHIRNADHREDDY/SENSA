@@ -1,0 +1,12 @@
+{
+  "name": "sensa-e2e-tests",
+  "version": "1.0.0",
+  "description": "SENSA E2E Validation Tests",
+  "private": true,
+  "scripts": {
+    "test": "vitest run"
+  },
+  "devDependencies": {
+    "vitest": "^1.0.0"
+  }
+}

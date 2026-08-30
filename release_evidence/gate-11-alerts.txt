@@ -1,0 +1,8 @@
+[GATE 11 - ALERTS]
+STATUS: BLOCKED (NO PHYSICAL CAMERAS / AI EVENTS)
+
+Configuration Steps when Infrastructure is Available:
+1. Induce physical motion in front of the RTSP camera triggering a zone boundary.
+2. Verify YOLO detection triggers internal alert.
+3. Verify clip generation (FFmpeg) and snapshot persistence.
+4. Verify notification delivery (WhatsApp/Email/Webhook) fires correctly.

@@ -1,0 +1,10 @@
+[GATE 01 - PRODUCTION SERVER]
+STATUS: BLOCKED (NO UBUNTU VPS)
+
+Configuration Steps when Infrastructure is Available:
+1. Provision Ubuntu 22.04 LTS / 24.04 LTS with 2+ vCPU, 4GB+ RAM.
+2. useradd -m -s /bin/bash sensa_service
+3. apt update && apt install python3.12-venv postgresql-client
+4. Restrict SSH to key-only authentication.
+5. Configure UFW: ufw allow 80/tcp && ufw allow 443/tcp
+6. Install SENSA repository into /opt/sensa.

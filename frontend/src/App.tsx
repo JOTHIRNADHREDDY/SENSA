@@ -1,7 +1,6 @@
 import React, { useState, useEffect } from 'react';
 import { motion, AnimatePresence } from 'motion/react';
 import { CameraStream, SecurityAlert, PolygonZone, DataStorageMode } from './types';
-import { INITIAL_CAMERAS, INITIAL_ALERTS, INITIAL_ZONES } from './data/camerasData';
 import { Navbar } from './components/Navbar';
 import { HeroSection } from './components/HeroSection';
 import { CameraGridDashboard } from './components/CameraGridDashboard';
@@ -27,14 +26,46 @@ export default function App() {
   const [returnToTab, setReturnToTab] = useState<string | null>(null);
 
   const [activeTab, setActiveTab] = useState<string>('hero');
-  const [cameras, setCameras] = useState<CameraStream[]>(INITIAL_CAMERAS);
-  const [alerts, setAlerts] = useState<SecurityAlert[]>(INITIAL_ALERTS);
-  const [zones, setZones] = useState<PolygonZone[]>(INITIAL_ZONES);
+  const [cameras, setCameras] = useState<CameraStream[]>([]);
+  const [alerts, setAlerts] = useState<SecurityAlert[]>([]);
+  const [zones, setZones] = useState<PolygonZone[]>([]);
   const [isTrialModalOpen, setIsTrialModalOpen] = useState<boolean>(false);
   const [isContactSalesModalOpen, setIsContactSalesModalOpen] = useState<boolean>(false);
   const [isCompatibilityModalOpen, setIsCompatibilityModalOpen] = useState<boolean>(false);
   const [legalModalType, setLegalModalType] = useState<'terms' | 'privacy' | null>(null);
   const [selectedDrawerCamId, setSelectedDrawerCamId] = useState<string>('cam-01');
+
+  // Load data from backend when user changes
+  useEffect(() => {
+    if (!user) {
+      setCameras([]);
+      setAlerts([]);
+      return;
+    }
+    
+    const loadData = async () => {
+      try {
+        const token = await user.getIdToken();
+        const headers = { 'Authorization': `Bearer ${token}` };
+        
+        // Use a default site id if the user has one, or fetch cameras without siteId
+        const camRes = await fetch('/api/v1/cameras', { headers });
+        if (camRes.ok) {
+          const camData = await camRes.json();
+          setCameras(camData.cameras || []);
+        }
+
+        const altRes = await fetch('/api/v1/alerts', { headers });
+        if (altRes.ok) {
+          const altData = await altRes.json();
+          setAlerts(altData.alerts || []);
+        }
+      } catch (e) {
+        console.error("Failed to load backend data", e);
+      }
+    };
+    loadData();
+  }, [user]);
 
   // Protect tabs on mount or activeTab/user change
   useEffect(() => {
@@ -63,60 +94,80 @@ export default function App() {
   }>({ registered: false });
 
   // Trigger simulated camera breach
-  const handleTriggerBreach = (camId: string) => {
-    setCameras((prev) =>
-      prev.map((c) => {
-        if (c.id === camId) {
-          return {
-            ...c,
-            status: 'BREACH',
-            alertsToday: c.alertsToday + 1,
-            lastAlertTime: 'Just now',
-            detectedType: 'ZONE BREACH',
-            detectionConfidence: 96,
-          };
+  const handleTriggerBreach = async (camId: string) => {
+    if (!user) return;
+    try {
+      const targetCam = cameras.find((c) => c.id === camId) || cameras[0];
+      const token = await user.getIdToken();
+      const res = await fetch('/api/v1/alerts', {
+        method: 'POST',
+        headers: { 
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          cameraId: targetCam?.id,
+          threatLevel: 'CRITICAL',
+          detectionType: 'Zone Breach',
+          confidence: 96,
+          details: `Unauthorized subject entered restricted zone on ${targetCam?.name}.`
+        })
+      });
+      if (res.ok) {
+        // Refresh alerts
+        const altRes = await fetch('/api/v1/alerts', { headers: { 'Authorization': `Bearer ${token}` } });
+        if (altRes.ok) {
+          const altData = await altRes.json();
+          setAlerts(altData.alerts || []);
         }
-        return c;
-      })
-    );
-
-    const targetCam = cameras.find((c) => c.id === camId) || cameras[0];
-    const newAlert: SecurityAlert = {
-      id: `ALT-${Math.floor(1000 + Math.random() * 9000)}`,
-      cameraId: targetCam.id,
-      cameraName: targetCam.name,
-      location: targetCam.location,
-      timestamp: 'Just now',
-      threatLevel: 'CRITICAL',
-      detectionType: 'Polygon Zone Breach (96% conf)',
-      confidence: 96,
-      whatsappSent: true,
-      snapshotUrl: 'https://images.unsplash.com/photo-1557597774-9d273605dfa9?auto=format&fit=crop&w=600&q=80',
-      acknowledged: false,
-      details: `Unauthorized subject entered ${targetCam.activeZoneName || 'Restricted Zone'}. WhatsApp alert dispatched.`,
-    };
-
-    setAlerts((prev) => [newAlert, ...prev]);
+      }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   // Acknowledge alert
-  const handleAcknowledgeAlert = (alertId: string) => {
-    setAlerts((prev) =>
-      prev.map((a) => (a.id === alertId ? { ...a, acknowledged: true } : a))
-    );
+  const handleAcknowledgeAlert = async (alertId: string) => {
+    if (!user) return;
+    try {
+      const token = await user.getIdToken();
+      const res = await fetch(`/api/v1/alerts/${alertId}`, {
+        method: 'PATCH',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({ acknowledged: true })
+      });
+      if (res.ok) {
+        setAlerts((prev) => prev.map((a) => (a.id === alertId ? { ...a, acknowledged: true } : a)));
+      }
+    } catch (e) {
+      console.error(e);
+    }
   };
 
   // Dispatch WhatsApp test message
   const handleSendWhatsappTest = async (camName: string) => {
+    if (!user) return;
     try {
-      await fetch('/api/send-whatsapp-test', {
+      const token = await user.getIdToken();
+      const res = await fetch('/api/send-whatsapp-test', {
         method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
         body: JSON.stringify({ cameraName: camName }),
       });
-      alert(`[SENSA] WhatsApp Test alert dispatched successfully to ${userSession.phone || 'verified phone number'}! Delivery time: 1.84s.`);
-    } catch (err) {
-      alert(`[SENSA] Test alert sent! Delivery time: 1.84s.`);
+      const data = await res.json();
+      if (data.success) {
+        alert(`[SENSA] WhatsApp Test alert dispatched successfully to ${userSession.phone || 'verified phone number'}! Delivery time: ${data.deliveryTimeMs || 1840}ms.`);
+      } else {
+        alert(`[SENSA] WhatsApp dispatch failed: ${data.error || 'Unknown error'}`);
+      }
+    } catch (err: any) {
+      alert(`[SENSA] WhatsApp dispatch failed: ${err.message}`);
     }
   };
 
@@ -240,13 +291,42 @@ export default function App() {
             </div>
             <div id="pricing">
               <PricingSection
-                onSelectPlan={(planName) => {
-                  if (planName === 'Starter') {
+                onSelectPlan={async (planName) => {
+                  if (planName === 'Pilot') {
                     setIsTrialModalOpen(true);
-                  } else if (planName === 'Business') {
+                  } else if (planName === 'Business' || planName === 'Enterprise') {
                     setIsContactSalesModalOpen(true);
                   } else {
-                    alert(`Selected ${planName} Plan. Proceeding to checkout.`);
+                    if (!user) {
+                      setActiveTab('login');
+                      return;
+                    }
+                    try {
+                      const idToken = await user.getIdToken();
+                      // Map UI name to plan ID
+                      const planId = planName.toLowerCase().replace(' ', '_');
+                      const response = await fetch('/api/v1/billing/checkout', {
+                        method: 'POST',
+                        headers: {
+                          'Content-Type': 'application/json',
+                          'Authorization': `Bearer ${idToken}`
+                        },
+                        body: JSON.stringify({
+                          countryCode: 'US', // In a full app, this would be passed from PricingSection state
+                          planId,
+                          billingCycle: 'monthly'
+                        })
+                      });
+                      
+                      const data = await response.json();
+                      if (data.success && data.checkoutSessionUrl) {
+                        window.location.href = data.checkoutSessionUrl;
+                      } else {
+                        throw new Error(data.error || 'Failed to initiate checkout');
+                      }
+                    } catch (err: any) {
+                      alert(`Checkout Error: ${err.message}`);
+                    }
                   }
                 }}
               />

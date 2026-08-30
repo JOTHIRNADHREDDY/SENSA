@@ -1,0 +1,8 @@
+[GATE 09 - REAL CAMERA]
+STATUS: BLOCKED (NO PHYSICAL CAMERAS)
+
+Configuration Steps when Infrastructure is Available:
+1. Connect a physical RTSP/ONVIF compatible network camera.
+2. Ensure camera is on the same LAN or accessible from the SENSA host.
+3. Input RTSP credentials in the SENSA local dashboard.
+4. Verify live frame acquisition begins.
