@@ -128,6 +128,8 @@ export async function handleBilling(request: Request, env: any) {
     } catch (e: any) {
       return new Response(JSON.stringify({ error: e.message }), { status: 400, headers: { "Content-Type": "application/json" } });
     }
+  }
+
   if (path === "/api/v1/billing/portal" && request.method === "POST") {
     try {
       if (!user || !user.email) return new Response(JSON.stringify({ error: "Unauthorized" }), { status: 401, headers: { "Content-Type": "application/json" } });
