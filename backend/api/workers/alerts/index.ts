@@ -15,8 +15,18 @@ export async function handleAlerts(request: Request, env: any) {
 
       // Check auth if needed, but often alerts are posted by the agent API using a token or license key
       // For now, assuming standard JWT
+      let hasAccess = false;
       const camera = await firestoreGet(env, "cameras", body.cameraId);
       if (!camera) return new Response(JSON.stringify({ error: "Camera not found" }), { status: 404, headers: { "Content-Type": "application/json" } });
+
+      if (camera.fields.siteId.stringValue === "personal") {
+        hasAccess = true;
+      } else {
+        const site = await firestoreGet(env, "sites", camera.fields.siteId.stringValue);
+        const orgId = site.fields.organizationId.stringValue;
+        hasAccess = await checkMembership(env, (request as any).user.uid, orgId, ["owner", "admin"]);
+      }
+      if (!hasAccess) return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { "Content-Type": "application/json" } });
       
       const alertId = crypto.randomUUID();
       const alertDoc = {
@@ -47,25 +57,59 @@ export async function handleAlerts(request: Request, env: any) {
     }
   }
 
-  // GET /api/v1/alerts?cameraId=XYZ
+  // GET /api/v1/alerts?cameraId=XYZ or /api/v1/alerts?siteId=XYZ
   if (request.method === "GET" && url.pathname === "/api/v1/alerts") {
     try {
       const cameraId = url.searchParams.get("cameraId");
-      if (!cameraId) return new Response(JSON.stringify({ error: "cameraId query param required" }), { status: 400, headers: { "Content-Type": "application/json" } });
+      const siteId = url.searchParams.get("siteId");
+      if (!cameraId && !siteId) return new Response(JSON.stringify({ error: "cameraId or siteId query param required" }), { status: 400, headers: { "Content-Type": "application/json" } });
 
-      const camera = await firestoreGet(env, "cameras", cameraId);
-      if (!camera) return new Response(JSON.stringify({ error: "Camera not found" }), { status: 404, headers: { "Content-Type": "application/json" } });
+      let query: any = null;
 
-      const site = await firestoreGet(env, "sites", camera.fields.siteId.stringValue);
-      const orgId = site.fields.organizationId.stringValue;
+      if (siteId) {
+         if (siteId !== "personal") {
+            const site = await firestoreGet(env, "sites", siteId);
+            if (!site) return new Response(JSON.stringify({ error: "Site not found" }), { status: 404, headers: { "Content-Type": "application/json" } });
+            const orgId = site.fields.organizationId.stringValue;
+            const hasAccess = await checkMembership(env, (request as any).user.uid, orgId, ["owner", "admin", "operator", "viewer"]);
+            if (!hasAccess) return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { "Content-Type": "application/json" } });
+         }
+         
+         // Fetch cameras in this site
+         const camQuery = {
+            from: [{ collectionId: "cameras" }],
+            where: { fieldFilter: { field: { fieldPath: "siteId" }, op: "EQUAL", value: { stringValue: siteId } } }
+         };
+         const cams = await firestoreQuery(env, "cameras", camQuery);
+         const camIds = cams.map((c: any) => c.fields.id.stringValue);
+         
+         if (camIds.length === 0) {
+            return new Response(JSON.stringify({ success: true, alerts: [] }), { status: 200, headers: { "Content-Type": "application/json" } });
+         }
 
-      const hasAccess = await checkMembership(env, (request as any).user.uid, orgId, ["owner", "admin", "operator", "viewer"]);
-      if (!hasAccess) return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { "Content-Type": "application/json" } });
+         // In Firestore, IN queries support max 10 elements. For prototype, we'll just query all alerts 
+         // and filter in memory since this is a demo.
+         const allAlerts = await firestoreQuery(env, "alerts", { from: [{ collectionId: "alerts" }] });
+         const filteredAlerts = allAlerts.filter((a: any) => camIds.includes(a.fields.cameraId.stringValue));
+         return new Response(JSON.stringify({ success: true, alerts: filteredAlerts }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
 
-      const query = {
-        from: [{ collectionId: "alerts" }],
-        where: { fieldFilter: { field: { fieldPath: "cameraId" }, op: "EQUAL", value: { stringValue: cameraId } } }
-      };
+      if (cameraId) {
+         const camera = await firestoreGet(env, "cameras", cameraId);
+         if (!camera) return new Response(JSON.stringify({ error: "Camera not found" }), { status: 404, headers: { "Content-Type": "application/json" } });
+   
+         if (camera.fields.siteId.stringValue !== "personal") {
+            const site = await firestoreGet(env, "sites", camera.fields.siteId.stringValue);
+            const orgId = site.fields.organizationId.stringValue;
+            const hasAccess = await checkMembership(env, (request as any).user.uid, orgId, ["owner", "admin", "operator", "viewer"]);
+            if (!hasAccess) return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { "Content-Type": "application/json" } });
+         }
+   
+         query = {
+           from: [{ collectionId: "alerts" }],
+           where: { fieldFilter: { field: { fieldPath: "cameraId" }, op: "EQUAL", value: { stringValue: cameraId } } }
+         };
+      }
       const res = await firestoreQuery(env, "alerts", query);
       
       return new Response(JSON.stringify({ success: true, alerts: res }), { status: 200, headers: { "Content-Type": "application/json" } });
@@ -85,10 +129,14 @@ export async function handleAlerts(request: Request, env: any) {
         if (!alert) return new Response(JSON.stringify({ error: "Not Found" }), { status: 404, headers: { "Content-Type": "application/json" } });
 
         const camera = await firestoreGet(env, "cameras", alert.fields.cameraId.stringValue);
-        const site = await firestoreGet(env, "sites", camera.fields.siteId.stringValue);
-        const orgId = site.fields.organizationId.stringValue;
-
-        const hasAccess = await checkMembership(env, (request as any).user.uid, orgId, ["owner", "admin", "operator"]);
+        let hasAccess = false;
+        if (camera.fields.siteId.stringValue === "personal") {
+          hasAccess = true;
+        } else {
+          const site = await firestoreGet(env, "sites", camera.fields.siteId.stringValue);
+          const orgId = site.fields.organizationId.stringValue;
+          hasAccess = await checkMembership(env, (request as any).user.uid, orgId, ["owner", "admin", "operator"]);
+        }
         if (!hasAccess) return new Response(JSON.stringify({ error: "Forbidden: Operators+" }), { status: 403, headers: { "Content-Type": "application/json" } });
         
         const updateDoc = { fields: { ...alert.fields } };

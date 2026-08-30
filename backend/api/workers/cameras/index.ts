@@ -12,12 +12,17 @@ export async function handleCameras(request: Request, env: any) {
         return new Response(JSON.stringify({ error: "siteId and name required" }), { status: 400, headers: { "Content-Type": "application/json" } });
       }
 
-      // Authorize: user must have access to site. 
-      const site = await firestoreGet(env, "sites", body.siteId);
-      if (!site) return new Response(JSON.stringify({ error: "Site not found" }), { status: 404, headers: { "Content-Type": "application/json" } });
+      let hasAccess = false;
+      if (body.siteId === "personal") {
+        hasAccess = true;
+      } else {
+        const site = await firestoreGet(env, "sites", body.siteId);
+        if (!site) return new Response(JSON.stringify({ error: "Site not found" }), { status: 404, headers: { "Content-Type": "application/json" } });
+        
+        const siteOrgId = site.fields.organizationId.stringValue;
+        hasAccess = await checkMembership(env, user.uid, siteOrgId, ["owner", "admin"]);
+      }
       
-      const siteOrgId = site.fields.organizationId.stringValue;
-      const hasAccess = await checkMembership(env, user.uid, siteOrgId, ["owner", "admin"]);
       if (!hasAccess) {
          return new Response(JSON.stringify({ error: "Forbidden: Admins only" }), { status: 403, headers: { "Content-Type": "application/json" } });
       }
@@ -48,12 +53,18 @@ export async function handleCameras(request: Request, env: any) {
       const siteId = url.searchParams.get("siteId");
       if (!siteId) return new Response(JSON.stringify({ error: "siteId query param required" }), { status: 400, headers: { "Content-Type": "application/json" } });
 
-      const site = await firestoreGet(env, "sites", siteId);
-      if (!site) return new Response(JSON.stringify({ error: "Site not found" }), { status: 404, headers: { "Content-Type": "application/json" } });
+      let hasAccess: boolean | string = false;
+      if (siteId === "personal" || siteId === user.uid) {
+        hasAccess = "owner";
+      } else {
+        const site = await firestoreGet(env, "sites", siteId);
+        if (!site) return new Response(JSON.stringify({ error: "Site not found" }), { status: 404, headers: { "Content-Type": "application/json" } });
 
-      const siteOrgId = site.fields.organizationId.stringValue;
-      const hasAccess = await checkMembership(env, user.uid, siteOrgId, ["owner", "admin", "operator", "viewer"]);
+        const siteOrgId = site.fields.organizationId.stringValue;
+        hasAccess = await checkMembership(env, user.uid, siteOrgId, ["owner", "admin", "operator", "viewer"]);
+      }
       if (!hasAccess) return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { "Content-Type": "application/json" } });
+
 
       const query = {
         from: [{ collectionId: "cameras" }],
@@ -85,9 +96,14 @@ export async function handleCameras(request: Request, env: any) {
         const camera = await firestoreGet(env, "cameras", cameraId);
         if (!camera) return new Response(JSON.stringify({ error: "Not Found" }), { status: 404, headers: { "Content-Type": "application/json" } });
 
-        const site = await firestoreGet(env, "sites", camera.fields.siteId.stringValue);
-        const orgId = site.fields.organizationId.stringValue;
-        const hasAccess = await checkMembership(env, user.uid, orgId, ["owner", "admin", "operator", "viewer"]);
+        let hasAccess = false;
+        if (camera.fields.siteId.stringValue === "personal") {
+          hasAccess = true;
+        } else {
+          const site = await firestoreGet(env, "sites", camera.fields.siteId.stringValue);
+          const orgId = site.fields.organizationId.stringValue;
+          hasAccess = await checkMembership(env, user.uid, orgId, ["owner", "admin", "operator", "viewer"]);
+        }
         if (!hasAccess) return new Response(JSON.stringify({ error: "Forbidden" }), { status: 403, headers: { "Content-Type": "application/json" } });
         
         return new Response(JSON.stringify({ success: true, camera: camera }), { status: 200, headers: { "Content-Type": "application/json" } });
@@ -102,9 +118,14 @@ export async function handleCameras(request: Request, env: any) {
         const camera = await firestoreGet(env, "cameras", cameraId);
         if (!camera) return new Response(JSON.stringify({ error: "Not Found" }), { status: 404, headers: { "Content-Type": "application/json" } });
 
-        const site = await firestoreGet(env, "sites", camera.fields.siteId.stringValue);
-        const orgId = site.fields.organizationId.stringValue;
-        const hasAccess = await checkMembership(env, user.uid, orgId, ["owner", "admin"]);
+        let hasAccess = false;
+        if (camera.fields.siteId.stringValue === "personal") {
+          hasAccess = true;
+        } else {
+          const site = await firestoreGet(env, "sites", camera.fields.siteId.stringValue);
+          const orgId = site.fields.organizationId.stringValue;
+          hasAccess = await checkMembership(env, user.uid, orgId, ["owner", "admin"]);
+        }
         if (!hasAccess) return new Response(JSON.stringify({ error: "Forbidden: Admins only" }), { status: 403, headers: { "Content-Type": "application/json" } });
         
         const updateDoc = { fields: { ...camera.fields } };
@@ -128,9 +149,14 @@ export async function handleCameras(request: Request, env: any) {
         const camera = await firestoreGet(env, "cameras", cameraId);
         if (!camera) return new Response(JSON.stringify({ error: "Not Found" }), { status: 404, headers: { "Content-Type": "application/json" } });
 
-        const site = await firestoreGet(env, "sites", camera.fields.siteId.stringValue);
-        const orgId = site.fields.organizationId.stringValue;
-        const hasAccess = await checkMembership(env, user.uid, orgId, ["owner", "admin"]);
+        let hasAccess = false;
+        if (camera.fields.siteId.stringValue === "personal") {
+          hasAccess = true;
+        } else {
+          const site = await firestoreGet(env, "sites", camera.fields.siteId.stringValue);
+          const orgId = site.fields.organizationId.stringValue;
+          hasAccess = await checkMembership(env, user.uid, orgId, ["owner", "admin"]);
+        }
         if (!hasAccess) return new Response(JSON.stringify({ error: "Forbidden: Admins only" }), { status: 403, headers: { "Content-Type": "application/json" } });
         
         const deleteUrl = `https://firestore.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents/cameras/${cameraId}`;

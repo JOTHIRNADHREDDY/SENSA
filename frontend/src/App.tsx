@@ -48,17 +48,42 @@ export default function App() {
         const token = await user.getIdToken();
         const headers = { 'Authorization': `Bearer ${token}` };
         
-        // Use a default site id if the user has one, or fetch cameras without siteId
-        const camRes = await fetch('/api/v1/cameras', { headers });
+        // Use personal siteId for prototype
+        const camRes = await fetch('/api/v1/cameras?siteId=personal', { headers });
         if (camRes.ok) {
           const camData = await camRes.json();
-          setCameras(camData.cameras || []);
+          // Transform backend camera format (Firestore fields) to frontend model
+          const mappedCameras = (camData.cameras || []).map((c: any, index: number) => ({
+            id: c.fields.id.stringValue,
+            code: `CAM-0${index + 1}`,
+            name: c.fields.name.stringValue,
+            location: 'Default Zone', // Hardcoded as backend doesn't store location yet
+            brand: 'Generic RTSP',
+            rtspUrl: c.fields.rtspUrl?.stringValue || '',
+            status: c.fields.enabled?.booleanValue ? 'ONLINE' : 'OFFLINE',
+            fps: 15,
+            confidenceThreshold: 0.85,
+            alertsToday: 0,
+            detectedType: 'CLEAR',
+            detectionConfidence: 99,
+            snapshotBg: 'radial-gradient(ellipse at 50% 50%, #0d1a0d, #06090d 80%)',
+          }));
+          setCameras(mappedCameras);
         }
 
-        const altRes = await fetch('/api/v1/alerts', { headers });
+        const altRes = await fetch('/api/v1/alerts?siteId=personal', { headers });
         if (altRes.ok) {
           const altData = await altRes.json();
-          setAlerts(altData.alerts || []);
+          // Transform backend alerts to frontend model
+          const mappedAlerts = (altData.alerts || []).map((a: any) => ({
+            id: a.fields.id.stringValue,
+            cameraId: a.fields.cameraId.stringValue,
+            type: a.fields.type.stringValue,
+            confidence: a.fields.confidence.doubleValue || 95,
+            timestamp: a.fields.timestamp.timestampValue,
+            acknowledged: a.fields.acknowledged.booleanValue
+          }));
+          setAlerts(mappedAlerts);
         }
       } catch (e) {
         console.error("Failed to load backend data", e);
@@ -108,17 +133,25 @@ export default function App() {
         body: JSON.stringify({
           cameraId: targetCam?.id,
           threatLevel: 'CRITICAL',
-          detectionType: 'Zone Breach',
+          type: 'Zone Breach',
           confidence: 96,
           details: `Unauthorized subject entered restricted zone on ${targetCam?.name}.`
         })
       });
       if (res.ok) {
         // Refresh alerts
-        const altRes = await fetch('/api/v1/alerts', { headers: { 'Authorization': `Bearer ${token}` } });
+        const altRes = await fetch('/api/v1/alerts?siteId=personal', { headers: { 'Authorization': `Bearer ${token}` } });
         if (altRes.ok) {
           const altData = await altRes.json();
-          setAlerts(altData.alerts || []);
+          const mappedAlerts = (altData.alerts || []).map((a: any) => ({
+            id: a.fields.id.stringValue,
+            cameraId: a.fields.cameraId.stringValue,
+            type: a.fields.type.stringValue,
+            confidence: a.fields.confidence.doubleValue || 95,
+            timestamp: a.fields.timestamp.timestampValue,
+            acknowledged: a.fields.acknowledged.booleanValue
+          }));
+          setAlerts(mappedAlerts);
         }
       }
     } catch (e) {
@@ -182,12 +215,49 @@ export default function App() {
   };
 
   // Add Camera
-  const handleAddCamera = (newCam: CameraStream) => {
+  const handleAddCamera = async (newCam: CameraStream) => {
+    if (user) {
+      try {
+        const token = await user.getIdToken();
+        const res = await fetch('/api/v1/cameras', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+            'Authorization': `Bearer ${token}`
+          },
+          body: JSON.stringify({
+            siteId: 'personal',
+            name: newCam.name,
+            rtspUrl: newCam.rtspUrl,
+            enabled: true
+          })
+        });
+        if (res.ok) {
+          const data = await res.json();
+          newCam.id = data.camera.fields.id.stringValue;
+        }
+      } catch (e) {
+        console.error("Failed to add camera to backend", e);
+      }
+    }
     setCameras((prev) => [...prev, newCam]);
   };
 
   // Delete Camera
-  const handleDeleteCamera = (camId: string) => {
+  const handleDeleteCamera = async (camId: string) => {
+    if (user) {
+      try {
+        const token = await user.getIdToken();
+        await fetch(`/api/v1/cameras/${camId}`, {
+          method: 'DELETE',
+          headers: {
+            'Authorization': `Bearer ${token}`
+          }
+        });
+      } catch (e) {
+        console.error("Failed to delete camera", e);
+      }
+    }
     setCameras((prev) => prev.filter((c) => c.id !== camId));
   };
 
