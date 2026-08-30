@@ -5,11 +5,11 @@ AI-powered CCTV surveillance system with real-time threat detection, zone-based 
 ## Architecture
 
 ```text
-New Frontend (to be built — separate repository)
+Frontend (React + Vite)
          |
          | HTTPS + Firebase ID Token
          v
-Backend (Cloudflare Workers / TypeScript)
+Backend API (Cloudflare Workers / TypeScript)
          |
          +---> Firebase Auth (JWT verification)
          +---> Firestore (database)
@@ -28,40 +28,36 @@ Windows Agent (Python / asyncio)
 
 ```text
 SENSA/
+├── backend/              # Consolidated Backend
+│   ├── api/              # Serverless Edge Backend (Cloudflare Workers)
+│   │   ├── workers/      # API route handlers
+│   │   ├── middleware/   # Firebase JWT auth middleware
+│   │   ├── utils/        # Firestore helper, pricing engine
+│   │   ├── wrangler.toml # Cloudflare deployment config
+│   │   └── .dev.vars     # Production secrets
+│   │
+│   ├── firebase/         # Database & Storage Security Rules
+│   │   ├── firestore.rules
+│   │   ├── storage.rules
+│   │   ├── firestore.indexes.json
+│   │   └── firebase.json
+│   │
+│   └── agent/            # SENSA Windows Agent (Python)
+│       ├── main.py       # Entry point
+│       ├── agent_service.py
+│       ├── camera/       # RTSP + ONVIF discovery
+│       ├── detection/    # YOLO, ALPR, heatmap
+│       ├── alerts/       # Alert sender + zone logic
+│       ├── storage/      # R2/local clip recorder
+│       ├── updater/      # Auto-update logic
+│       ├── config/       # Cloud config loader
+│       └── requirements.txt
 │
-├── cloudflare/           # Serverless Edge Backend (Cloudflare Workers)
-│   ├── workers/          # API route handlers
-│   │   ├── api/          # Main router
-│   │   ├── auth/         # Auth verification
-│   │   ├── billing/      # Stripe/Razorpay checkout
-│   │   ├── cameras/      # Camera management
-│   │   ├── alerts/       # Alert ingestion
-│   │   ├── license/      # License activation + heartbeat
-│   │   ├── organizations/# Organization management
-│   │   ├── sites/        # Site management
-│   │   ├── telemetry/    # Agent health data
-│   │   └── webhooks/     # Stripe webhook handler
-│   ├── middleware/       # Firebase JWT auth middleware
-│   ├── utils/            # Firestore helper, pricing engine
-│   ├── wrangler.toml     # Cloudflare deployment config
-│   └── .dev.vars.example # Production secrets template
-│
-├── firebase/             # Database & Storage Security Rules
-│   ├── firestore.rules   # Role-based access control
-│   ├── storage.rules     # Storage security
-│   ├── firestore.indexes.json
-│   └── firebase.json
-│
-├── agent/                # SENSA Windows Agent (Python)
-│   ├── main.py           # Entry point
-│   ├── agent_service.py  # Windows Service wrapper
-│   ├── camera/           # RTSP + ONVIF discovery
-│   ├── detection/        # YOLO, ALPR, heatmap
-│   ├── alerts/           # Alert sender + zone logic
-│   ├── storage/          # R2/local clip recorder
-│   ├── updater/          # Auto-update logic
-│   ├── config/           # Cloud config loader
-│   └── requirements.txt  # Python deps (YOLO, OpenCV, httpx)
+├── frontend/             # React + Vite Frontend
+│   ├── src/              # UI components and React app
+│   ├── public/           # Static assets
+│   ├── package.json      # Dependencies
+│   └── vite.config.ts    # Bundler config
 │
 ├── installer/            # Inno Setup Windows Installer
 │   ├── SENSA-Setup-x64.iss
@@ -81,9 +77,16 @@ SENSA/
 
 ## Quick Start
 
+### Frontend (React UI)
+```bash
+cd frontend
+npm install
+npm run dev
+```
+
 ### Cloudflare Worker (Backend API)
 ```bash
-cd cloudflare
+cd backend/api
 npm install
 # Copy .dev.vars.example to .dev.vars and add secrets
 npx wrangler dev
@@ -91,13 +94,13 @@ npx wrangler dev
 
 ### Firebase Security Rules
 ```bash
-cd firebase
+cd backend/firebase
 firebase emulators:start --only firestore
 ```
 
 ### Windows Agent
 ```bash
-cd agent
+cd backend/agent
 python -m venv .venv
 .venv\Scripts\activate
 pip install -r requirements.txt
