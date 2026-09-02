@@ -1,5 +1,5 @@
 export async function firestoreQuery(env: any, collectionId: string, query: any) {
-  const projectId = env.FIREBASE_PROJECT_ID || "sensa-production";
+  const projectId = env.FIREBASE_PROJECT_ID || "sensa-f74e9";
   const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents:runQuery`;
   const res = await fetch(url, {
     method: "POST",
@@ -13,7 +13,7 @@ export async function firestoreQuery(env: any, collectionId: string, query: any)
 }
 
 export async function firestoreGet(env: any, collection: string, id: string) {
-  const projectId = env.FIREBASE_PROJECT_ID || "sensa-production";
+  const projectId = env.FIREBASE_PROJECT_ID || "sensa-f74e9";
   const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${collection}/${id}`;
   const res = await fetch(url, {
     headers: { "Authorization": `Bearer ${env.FIREBASE_SERVICE_ACCOUNT_TOKEN}` }
@@ -23,7 +23,7 @@ export async function firestoreGet(env: any, collection: string, id: string) {
 }
 
 export async function firestoreCreate(env: any, collection: string, id: string, doc: any) {
-  const projectId = env.FIREBASE_PROJECT_ID || "sensa-production";
+  const projectId = env.FIREBASE_PROJECT_ID || "sensa-f74e9";
   const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${collection}?documentId=${id}`;
   const res = await fetch(url, {
     method: "POST",
@@ -37,7 +37,7 @@ export async function firestoreCreate(env: any, collection: string, id: string, 
 }
 
 export async function firestoreUpdate(env: any, collection: string, id: string, doc: any, updateMask: string[]) {
-  const projectId = env.FIREBASE_PROJECT_ID || "sensa-production";
+  const projectId = env.FIREBASE_PROJECT_ID || "sensa-f74e9";
   const maskParams = updateMask.map(m => `updateMask.fieldPaths=${m}`).join("&");
   const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${collection}/${id}?${maskParams}`;
   const res = await fetch(url, {
@@ -53,7 +53,7 @@ export async function firestoreUpdate(env: any, collection: string, id: string, 
 
 // Transaction helper for Activation Limits
 export async function firestoreTransaction(env: any, writes: any[]) {
-  const projectId = env.FIREBASE_PROJECT_ID || "sensa-production";
+  const projectId = env.FIREBASE_PROJECT_ID || "sensa-f74e9";
   const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents:commit`;
   const res = await fetch(url, {
     method: "POST",

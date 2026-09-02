@@ -34,6 +34,7 @@ export default function App() {
   const [isCompatibilityModalOpen, setIsCompatibilityModalOpen] = useState<boolean>(false);
   const [legalModalType, setLegalModalType] = useState<'terms' | 'privacy' | null>(null);
   const [selectedDrawerCamId, setSelectedDrawerCamId] = useState<string>('cam-01');
+  const [googlePrefill, setGooglePrefill] = useState<{ displayName: string | null; email: string | null; photoURL: string | null } | null>(null);
 
   // Load data from backend when user changes
   useEffect(() => {
@@ -288,15 +289,20 @@ export default function App() {
               setActiveTab(returnToTab);
               setReturnToTab(null);
             } else {
-              setActiveTab('hero');
+              setActiveTab('dashboard');
             }
           }} 
           onOpenLegal={(type) => setLegalModalType(type)}
           onCreateAccount={() => {
+            setGooglePrefill(null);
             setActiveTab('hero');
             setIsTrialModalOpen(true);
           }}
           onGoHome={() => setActiveTab('hero')}
+          onGoogleNewUser={(userData) => {
+            setGooglePrefill(userData);
+            setIsTrialModalOpen(true);
+          }}
         />
         <LegalModal 
           isOpen={legalModalType !== null} 
@@ -525,9 +531,10 @@ export default function App() {
       {/* OTP Signup Modal */}
       <SignupModal
         isOpen={isTrialModalOpen}
-        onClose={() => setIsTrialModalOpen(false)}
+        onClose={() => { setIsTrialModalOpen(false); setGooglePrefill(null); }}
         onCompleteSignup={handleCompleteSignup}
         onOpenLegal={(type) => setLegalModalType(type as any)}
+        googlePrefill={googlePrefill}
       />
 
       <ContactSalesModal

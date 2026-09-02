@@ -7,11 +7,12 @@ interface LoginPageProps {
   onOpenLegal: (type: 'terms' | 'privacy') => void;
   onCreateAccount: () => void;
   onGoHome: () => void;
+  onGoogleNewUser?: (userData: { displayName: string | null; email: string | null; photoURL: string | null }) => void;
 }
 
 type AuthState = 'login' | 'forgot' | 'mfa' | 'sso';
 
-export const LoginPage: React.FC<LoginPageProps> = ({ onBackToApp, onOpenLegal, onCreateAccount, onGoHome }) => {
+export const LoginPage: React.FC<LoginPageProps> = ({ onBackToApp, onOpenLegal, onCreateAccount, onGoHome, onGoogleNewUser }) => {
   const { signInWithGoogle } = useAuth();
   const [authState, setAuthState] = useState<AuthState>('login');
   const [email, setEmail] = useState('');
@@ -314,10 +315,22 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onBackToApp, onOpenLegal, 
                     onClick={async () => {
                       try {
                         setIsLoading(true);
-                        await signInWithGoogle();
-                        onBackToApp();
-                      } catch (err) {
-                        setError('Failed to sign in with Google');
+                        setError(null);
+                        const result = await signInWithGoogle();
+                        if (result.isNewUser && onGoogleNewUser) {
+                          // New Google user — open registration to complete profile
+                          onGoogleNewUser({
+                            displayName: result.user.displayName,
+                            email: result.user.email,
+                            photoURL: result.user.photoURL,
+                          });
+                        } else {
+                          // Existing user — go to dashboard
+                          onBackToApp();
+                        }
+                      } catch (err: any) {
+                        setError(err?.message || 'Failed to sign in with Google');
+                      } finally {
                         setIsLoading(false);
                       }
                     }}

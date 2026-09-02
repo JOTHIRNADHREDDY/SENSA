@@ -1,18 +1,59 @@
 import { motion, AnimatePresence } from 'motion/react';
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef, useCallback } from 'react';
 import { DataStorageMode } from '../types';
-import { X, Smartphone, Shield, CheckCircle2, Lock, ArrowRight, RefreshCw, Zap, Server, Cloud, HardDrive, Info } from 'lucide-react';
+import { X, Smartphone, Shield, CheckCircle2, Lock, ArrowRight, RefreshCw, Zap, Server, Cloud, HardDrive, Info, AlertCircle } from 'lucide-react';
 import { legalDocuments } from '../data/legalDocuments';
 import { PhoneInput, PhoneData } from './PhoneInput';
+import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult, linkWithPhoneNumber } from 'firebase/auth';
+import { auth } from '../lib/firebase';
+import { useAuth } from '../lib/AuthContext';
 
 interface SignupModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCompleteSignup: (phone: string, mode: DataStorageMode) => void;
   onOpenLegal: (type: string) => void;
+  googlePrefill?: {
+    displayName: string | null;
+    email: string | null;
+    photoURL: string | null;
+  } | null;
 }
 
-export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCompleteSignup, onOpenLegal }) => {
+// Map Firebase error codes to user-friendly messages
+function getPhoneAuthErrorMessage(error: any): string {
+  const code = error?.code || '';
+  switch (code) {
+    case 'auth/invalid-phone-number':
+      return 'The phone number format is invalid. Please check and try again.';
+    case 'auth/missing-phone-number':
+      return 'Please enter a phone number.';
+    case 'auth/too-many-requests':
+      return 'Too many attempts. Please wait a few minutes before trying again.';
+    case 'auth/quota-exceeded':
+      return 'SMS quota exceeded. Please try again later.';
+    case 'auth/captcha-check-failed':
+    case 'auth/recaptcha-not-enabled':
+      return 'Security verification failed. Please refresh the page and try again.';
+    case 'auth/network-request-failed':
+      return 'Network error. Please check your internet connection.';
+    case 'auth/operation-not-allowed':
+      return 'Phone authentication is not enabled. Please contact support.';
+    case 'auth/app-not-authorized':
+      return 'This app is not authorized for phone authentication. Please contact support.';
+    case 'auth/invalid-verification-code':
+      return 'The verification code is incorrect. Please check and try again.';
+    case 'auth/code-expired':
+      return 'The verification code has expired. Please request a new one.';
+    case 'auth/credential-already-in-use':
+      return 'This phone number is already linked to another account.';
+    default:
+      return error?.message || 'Unable to send the verification code right now. Please check your number and try again.';
+  }
+}
+
+export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCompleteSignup, onOpenLegal, googlePrefill }) => {
+  const { user } = useAuth();
   const [mode, setMode] = useState<'signup' | 'login'>('signup');
   const [step, setStep] = useState<1 | 2 | 3>(1);
   const [phoneData, setPhoneData] = useState<PhoneData>({
@@ -40,6 +81,30 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
   const [marketingConsent, setMarketingConsent] = useState<boolean>(false);
   const [loginLegalAcknowledged, setLoginLegalAcknowledged] = useState<boolean>(false);
 
+  // Firebase Phone Auth State
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
+  const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
+  const recaptchaContainerRef = useRef<HTMLDivElement>(null);
+
+  // Prefill from Google when available
+  useEffect(() => {
+    if (googlePrefill) {
+      if (googlePrefill.displayName) setFullName(googlePrefill.displayName);
+      if (googlePrefill.email) setEmail(googlePrefill.email);
+      setMode('signup');
+      // Google users start at phone step since they already have name/email
+      setStep(1);
+    }
+  }, [googlePrefill]);
+
+  // Reset state when modal opens/closes
+  useEffect(() => {
+    if (!isOpen) {
+      // Cleanup reCAPTCHA on close
+      cleanupRecaptcha();
+    }
+  }, [isOpen]);
+
   useEffect(() => {
     if (step !== 2 || timerSeconds <= 0) return;
 
@@ -56,7 +121,41 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
     return () => clearInterval(interval);
   }, [step, timerSeconds]);
 
-  
+  const cleanupRecaptcha = useCallback(() => {
+    if (recaptchaVerifierRef.current) {
+      try {
+        recaptchaVerifierRef.current.clear();
+      } catch (e) {
+        // Ignore cleanup errors
+      }
+      recaptchaVerifierRef.current = null;
+    }
+  }, []);
+
+  const initRecaptcha = useCallback(() => {
+    cleanupRecaptcha();
+    
+    if (!recaptchaContainerRef.current) return null;
+
+    try {
+      const verifier = new RecaptchaVerifier(auth, recaptchaContainerRef.current, {
+        size: 'invisible',
+        callback: () => {
+          // reCAPTCHA solved — will proceed with phone auth
+        },
+        'expired-callback': () => {
+          setErrorMsg('Security verification expired. Please try again.');
+          cleanupRecaptcha();
+        }
+      });
+      recaptchaVerifierRef.current = verifier;
+      return verifier;
+    } catch (e) {
+      console.error('Failed to initialize reCAPTCHA:', e);
+      setErrorMsg('Failed to initialize security verification. Please refresh the page.');
+      return null;
+    }
+  }, [cleanupRecaptcha]);
 
   const handleSendOtp = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -64,15 +163,39 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
       setErrorMsg('Enter a valid mobile number for the selected country.');
       return;
     }
+    if (loading) return; // Prevent duplicate requests
+
     setErrorMsg('');
     setLoading(true);
 
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      const verifier = initRecaptcha();
+      if (!verifier) {
+        setLoading(false);
+        return;
+      }
+
+      // Use the authenticated user's auth instance if Google-signed-in (for linking),
+      // or regular signInWithPhoneNumber for standalone phone signup
+      let result: ConfirmationResult;
+      if (user && googlePrefill) {
+        // Link phone to existing Google account
+        result = await linkWithPhoneNumber(user, phoneData.phone_e164, verifier);
+      } else {
+        result = await signInWithPhoneNumber(auth, phoneData.phone_e164, verifier);
+      }
+      
+      setConfirmationResult(result);
       setStep(2);
       setTimerSeconds(60);
       setCanResend(false);
-    }, 800);
+    } catch (error: any) {
+      console.error('Phone auth error:', error);
+      setErrorMsg(getPhoneAuthErrorMessage(error));
+      cleanupRecaptcha();
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleOtpInput = (val: string, index: number) => {
@@ -87,26 +210,100 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
     }
   };
 
+  // Handle paste for OTP
+  const handleOtpPaste = (e: React.ClipboardEvent) => {
+    e.preventDefault();
+    const pastedData = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
+    if (pastedData.length > 0) {
+      const newOtp = [...otp];
+      for (let i = 0; i < 6; i++) {
+        newOtp[i] = pastedData[i] || '';
+      }
+      setOtp(newOtp);
+      // Focus the last filled input or the next empty one
+      const focusIndex = Math.min(pastedData.length, 5);
+      const nextInput = document.getElementById(`otp-input-${focusIndex}`);
+      nextInput?.focus();
+    }
+  };
+
+  const handleOtpKeyDown = (e: React.KeyboardEvent, index: number) => {
+    if (e.key === 'Backspace' && !otp[index] && index > 0) {
+      const prevInput = document.getElementById(`otp-input-${index - 1}`);
+      prevInput?.focus();
+    }
+  };
+
   const handleVerifyOtp = async (e: React.FormEvent) => {
     e.preventDefault();
     const fullOtp = otp.join('');
     if (fullOtp.length < 6) {
-      setErrorMsg('Please enter 6-digit code');
+      setErrorMsg('Please enter the complete 6-digit code');
       return;
     }
+    if (!confirmationResult) {
+      setErrorMsg('Verification session expired. Please request a new code.');
+      return;
+    }
+    if (loading) return;
+
     setErrorMsg('');
     setLoading(true);
 
-    setTimeout(() => {
-      setLoading(false);
+    try {
+      await confirmationResult.confirm(fullOtp);
       setStep(3);
-    }, 800);
+    } catch (error: any) {
+      console.error('OTP verification error:', error);
+      setErrorMsg(getPhoneAuthErrorMessage(error));
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  const handleResendOtp = async () => {
+    if (!canResend || loading) return;
+    
+    setErrorMsg('');
+    setLoading(true);
+    setOtp(['', '', '', '', '', '']);
+
+    try {
+      const verifier = initRecaptcha();
+      if (!verifier) {
+        setLoading(false);
+        return;
+      }
+
+      let result: ConfirmationResult;
+      if (user && googlePrefill) {
+        result = await linkWithPhoneNumber(user, phoneData.phone_e164, verifier);
+      } else {
+        result = await signInWithPhoneNumber(auth, phoneData.phone_e164, verifier);
+      }
+
+      setConfirmationResult(result);
+      setTimerSeconds(60);
+      setCanResend(false);
+    } catch (error: any) {
+      console.error('Resend OTP error:', error);
+      setErrorMsg(getPhoneAuthErrorMessage(error));
+      cleanupRecaptcha();
+    } finally {
+      setLoading(false);
+    }
   };
 
   const handleCompleteRegister = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (!fullName || !email || !password) {
-      setErrorMsg('All fields are required');
+    const isGoogleFlow = !!googlePrefill;
+    
+    if (!fullName || !email) {
+      setErrorMsg('Name and email are required');
+      return;
+    }
+    if (!isGoogleFlow && !password) {
+      setErrorMsg('Password is required');
       return;
     }
     if (!legalAccepted) {
@@ -116,23 +313,51 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
     setErrorMsg('');
     setLoading(true);
 
-    // Simulated Backend Audit Record Payload
-    const auditRecord = {
-      user_id: "new_user_123",
-      terms_version: legalDocuments.terms.version,
-      privacy_version: legalDocuments.privacy.version,
-      accepted_at: new Date().toISOString(),
-      marketing_consent: marketingConsent,
-      marketing_consent_at: marketingConsent ? new Date().toISOString() : null,
-      consent_source: "website_signup"
-    };
-    console.log("Submitting Consent Record to Backend:", auditRecord);
+    try {
+      // Get the current authenticated user's token for backend call
+      const currentUser = auth.currentUser;
+      if (!currentUser) {
+        setErrorMsg('Authentication session lost. Please try again.');
+        setLoading(false);
+        return;
+      }
 
-    setTimeout(() => {
+      const token = await currentUser.getIdToken();
+      
+      // Create SENSA profile via backend
+      const res = await fetch((import.meta.env.VITE_API_BASE_URL || '') + '/api/v1/auth/profile', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+          'Authorization': `Bearer ${token}`
+        },
+        body: JSON.stringify({
+          displayName: fullName,
+          email: email,
+          phone: phoneData.phone_e164,
+          photoURL: googlePrefill?.photoURL || '',
+          storageMode: storageMode,
+          provider: isGoogleFlow ? 'google' : 'phone',
+          legalAccepted: true,
+          termsVersion: legalDocuments.terms.version,
+          privacyVersion: legalDocuments.privacy.version,
+          marketingConsent: marketingConsent,
+        })
+      });
+
+      if (!res.ok) {
+        const data = await res.json();
+        throw new Error(data.error || 'Failed to create profile');
+      }
+
       setLoading(false);
       onCompleteSignup(phoneData.phone_e164, storageMode);
       onClose();
-    }, 1000);
+    } catch (error: any) {
+      console.error('Profile creation error:', error);
+      setErrorMsg(error.message || 'Failed to create account. Please try again.');
+      setLoading(false);
+    }
   };
 
   const handleLogin = async (e: React.FormEvent) => {
@@ -164,6 +389,9 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
           transition={{ duration: 0.2 }}
           className="fixed inset-0 z-50 bg-slate-950/90 backdrop-blur-md flex items-center justify-center p-4 overflow-y-auto">
       <div className="max-w-md w-full bg-slate-900 border border-slate-800 rounded-3xl p-6 sm:p-8 space-y-6 relative shadow-2xl my-8">
+        {/* Invisible reCAPTCHA container */}
+        <div ref={recaptchaContainerRef} id="recaptcha-container"></div>
+        
         <button
           onClick={onClose}
           className="absolute top-5 right-5 p-2 rounded-full bg-slate-800 text-slate-400 hover:text-white transition-colors cursor-pointer"
@@ -178,27 +406,33 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
             <span>SENSA SECURE ACCESS</span>
           </div>
           <h3 className="text-2xl font-bold text-white">
-            {mode === 'signup' ? 'Create Account' : 'Welcome Back'}
+            {mode === 'signup' ? (googlePrefill ? 'Complete Your Account' : 'Create Account') : 'Welcome Back'}
           </h3>
-          <div className="flex justify-center gap-4 mt-2 border-b border-slate-800 pb-2">
-            <button 
-              className={`text-sm font-medium pb-2 ${mode === 'signup' ? 'text-sky-400 border-b-2 border-sky-400' : 'text-slate-500'}`}
-              onClick={() => { setMode('signup'); setErrorMsg(''); }}
-            >
-              Sign Up
-            </button>
-            <button 
-              className={`text-sm font-medium pb-2 ${mode === 'login' ? 'text-sky-400 border-b-2 border-sky-400' : 'text-slate-500'}`}
-              onClick={() => { setMode('login'); setErrorMsg(''); }}
-            >
-              Log In
-            </button>
-          </div>
+          {!googlePrefill && (
+            <div className="flex justify-center gap-4 mt-2 border-b border-slate-800 pb-2">
+              <button 
+                className={`text-sm font-medium pb-2 ${mode === 'signup' ? 'text-sky-400 border-b-2 border-sky-400' : 'text-slate-500'}`}
+                onClick={() => { setMode('signup'); setErrorMsg(''); }}
+              >
+                Sign Up
+              </button>
+              <button 
+                className={`text-sm font-medium pb-2 ${mode === 'login' ? 'text-sky-400 border-b-2 border-sky-400' : 'text-slate-500'}`}
+                onClick={() => { setMode('login'); setErrorMsg(''); }}
+              >
+                Log In
+              </button>
+            </div>
+          )}
+          {googlePrefill && (
+            <p className="text-sm text-slate-400">Complete your SENSA profile to get started.</p>
+          )}
         </div>
 
         {errorMsg && (
-          <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-mono">
-            {errorMsg}
+          <div className="p-3 rounded-xl bg-rose-500/10 border border-rose-500/30 text-rose-400 text-xs font-mono flex items-start gap-2">
+            <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
+            <span>{errorMsg}</span>
           </div>
         )}
 
@@ -276,7 +510,7 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
                   <Info className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
                   <p className="text-slate-300">
                     <span className="font-semibold text-white">Enterprise customers</span> may require additional contractual terms, security commitments, DPAs, data-residency requirements, or negotiated service levels.{' '}
-                    <button type="button" className="text-sky-400 hover:underline">Enterprise Security & Compliance</button>
+                    <button type="button" className="text-sky-400 hover:underline">Enterprise Security &amp; Compliance</button>
                   </p>
                 </div>
                 <div className="space-y-1.5">
@@ -294,11 +528,11 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
 
                 <button
                   type="submit"
-                  disabled={loading}
-                  className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs transition-all cursor-pointer shadow-lg shadow-sky-500/25"
+                  disabled={loading || !phoneData.is_valid}
+                  className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-sky-500 hover:bg-sky-400 disabled:bg-slate-800 disabled:text-slate-500 text-slate-950 font-bold text-xs transition-all cursor-pointer shadow-lg shadow-sky-500/25 disabled:shadow-none"
                 >
                   {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
-                  <span>Continue</span>
+                  <span>{loading ? 'Sending...' : 'Send Verification Code'}</span>
                 </button>
               </form>
             )}
@@ -321,9 +555,12 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
                       key={i}
                       id={`otp-input-${i}`}
                       type="text"
+                      inputMode="numeric"
                       maxLength={1}
                       value={digit}
                       onChange={(e) => handleOtpInput(e.target.value, i)}
+                      onPaste={i === 0 ? handleOtpPaste : undefined}
+                      onKeyDown={(e) => handleOtpKeyDown(e, i)}
                       className="w-10 h-12 text-center bg-slate-950 border border-slate-800 text-sky-400 text-lg font-bold font-mono rounded-xl outline-none focus:border-sky-500"
                     />
                   ))}
@@ -331,21 +568,18 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
 
                 <button
                   type="submit"
-                  disabled={loading}
-                  className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-sky-500 hover:bg-sky-400 text-slate-950 font-bold text-xs transition-all cursor-pointer shadow-lg shadow-sky-500/25"
+                  disabled={loading || otp.join('').length < 6}
+                  className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-sky-500 hover:bg-sky-400 disabled:bg-slate-800 disabled:text-slate-500 text-slate-950 font-bold text-xs transition-all cursor-pointer shadow-lg shadow-sky-500/25 disabled:shadow-none"
                 >
                   {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                  <span>Verify Code</span>
+                  <span>{loading ? 'Verifying...' : 'Verify Code'}</span>
                 </button>
 
                 <div className="text-center space-y-2 mt-4">
                   <button
                     type="button"
-                    disabled={!canResend}
-                    onClick={() => {
-                      setTimerSeconds(60);
-                      setCanResend(false);
-                    }}
+                    disabled={!canResend || loading}
+                    onClick={handleResendOtp}
                     className="block w-full text-xs font-mono text-slate-400 hover:text-sky-400 disabled:opacity-50 transition-colors"
                   >
                     {canResend ? 'Resend OTP Code' : `Resend in ${timerSeconds}s`}
@@ -356,6 +590,8 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
                       setStep(1);
                       setOtp(['', '', '', '', '', '']);
                       setErrorMsg('');
+                      setConfirmationResult(null);
+                      cleanupRecaptcha();
                     }}
                     className="block w-full text-xs font-mono text-slate-500 hover:text-slate-300 transition-colors"
                   >
@@ -384,17 +620,20 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
                     placeholder="Work Email"
-                    className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-4 py-2.5 text-xs font-mono outline-none focus:border-sky-500"
+                    readOnly={!!googlePrefill}
+                    className={`w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-4 py-2.5 text-xs font-mono outline-none focus:border-sky-500 ${googlePrefill ? 'opacity-60 cursor-not-allowed' : ''}`}
                   />
 
-                  <input
-                    type="password"
-                    required
-                    value={password}
-                    onChange={(e) => setPassword(e.target.value)}
-                    placeholder="Password (min 8 chars)"
-                    className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-4 py-2.5 text-xs font-mono outline-none focus:border-sky-500"
-                  />
+                  {!googlePrefill && (
+                    <input
+                      type="password"
+                      required
+                      value={password}
+                      onChange={(e) => setPassword(e.target.value)}
+                      placeholder="Password (min 8 chars)"
+                      className="w-full bg-slate-950 border border-slate-800 text-white rounded-xl px-4 py-2.5 text-xs font-mono outline-none focus:border-sky-500"
+                    />
+                  )}
                 </div>
 
                 {/* Storage Mode Selector */}
@@ -445,7 +684,7 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
 
                 <div className="text-[10px] text-slate-400 bg-slate-800/30 p-2.5 rounded-lg border border-slate-700/50 mt-4 leading-relaxed">
                   SENSA provides AI-assisted video analysis and alerting. Customers are responsible for ensuring that camera deployment, monitoring, recording, employee monitoring, biometric processing, and alert practices comply with applicable laws, notices, consent requirements, workplace rules, and local restrictions.{' '}
-                  <button type="button" onClick={() => onOpenLegal('cctvNotice')} className="text-sky-400 hover:underline whitespace-nowrap">Read CCTV & Responsible Use Notice</button>
+                  <button type="button" onClick={() => onOpenLegal('cctvNotice')} className="text-sky-400 hover:underline whitespace-nowrap">Read CCTV &amp; Responsible Use Notice</button>
                 </div>
 
                 <div className="space-y-3 pt-2">
@@ -481,7 +720,7 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
                   className="w-full flex items-center justify-center gap-2 py-3.5 rounded-xl bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 disabled:from-slate-800 disabled:to-slate-800 disabled:text-slate-500 text-slate-950 font-bold text-sm transition-all cursor-pointer shadow-lg shadow-sky-500/25 disabled:shadow-none mt-4"
                 >
                   {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4 fill-current" />}
-                  <span>Create Free Account →</span>
+                  <span>{loading ? 'Creating Account...' : 'Create Free Account →'}</span>
                 </button>
               </form>
             )}
