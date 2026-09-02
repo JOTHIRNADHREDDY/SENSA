@@ -1,8 +1,7 @@
 // Firebase Auth JWT Verification in Cloudflare Workers using Web Crypto API
 // Validates RS256 JWTs against Google's public JWKS
 
-const FIREBASE_PROJECT_ID = "sensa-production"; // Should be moved to env vars
-const ISSUER = `https://securetoken.google.com/${FIREBASE_PROJECT_ID}`;
+// Firebase project ID is resolved per request using env
 
 // Cache for Google's public keys
 let cachedKeys: any = null;
@@ -44,7 +43,9 @@ function base64UrlToUint8Array(base64Url: string) {
   return outputArray;
 }
 
-export async function verifyAuth(request: Request): Promise<{ uid: string, email: string, orgId?: string } | null> {
+export async function verifyAuth(request: Request, env?: any): Promise<{ uid: string, email: string, orgId?: string } | null> {
+  const FIREBASE_PROJECT_ID = env?.FIREBASE_PROJECT_ID || "sensa-f74e9";
+  const ISSUER = `https://securetoken.google.com/${FIREBASE_PROJECT_ID}`;
   const authHeader = request.headers.get('Authorization');
   if (!authHeader || !authHeader.startsWith('Bearer ')) {
     return null;

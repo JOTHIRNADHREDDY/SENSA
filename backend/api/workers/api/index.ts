@@ -47,7 +47,7 @@ export default {
     }
 
     // Verify Auth for protected routes
-    const user = await verifyAuth(request);
+    const user = await verifyAuth(request, env);
     if (!user) {
       return new Response(JSON.stringify({ error: "Unauthorized" }), { 
         status: 401, headers: { "Content-Type": "application/json" } 

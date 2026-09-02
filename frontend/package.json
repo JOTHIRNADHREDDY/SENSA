@@ -11,19 +11,22 @@
     "test": "vitest run"
   },
   "dependencies": {
-    "@google/genai": "^2.4.0",
     "@tailwindcss/vite": "^4.1.14",
     "@vitejs/plugin-react": "^5.0.4",
     "dotenv": "^17.2.3",
     "express": "^4.21.2",
     "firebase": "^12.17.1",
-    "firebase-admin": "^14.2.0",
     "libphonenumber-js": "^1.13.11",
     "lucide-react": "^0.546.0",
     "motion": "^12.23.24",
     "react": "^19.0.1",
     "react-dom": "^19.0.1",
     "vite": "^6.2.3"
+  },
+  "allowScripts": {
+    "@firebase/util": true,
+    "esbuild": true,
+    "protobufjs": true
   },
   "devDependencies": {
     "@testing-library/dom": "^10.4.1",

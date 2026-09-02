@@ -25,5 +25,23 @@ export default defineConfig(() => {
         }
       }
     },
+    build: {
+      chunkSizeWarningLimit: 600,
+      rollupOptions: {
+        output: {
+          manualChunks(id) {
+            if (id.includes('node_modules')) {
+              if (id.includes('firebase') || id.includes('@firebase') || id.includes('protobufjs')) {
+                return 'firebase-vendor';
+              }
+              if (id.includes('lucide')) {
+                return 'lucide-vendor';
+              }
+              return 'vendor';
+            }
+          }
+        }
+      }
+    }
   };
 });
