@@ -1,5 +1,6 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useAuth } from '../lib/AuthContext';
+import { User, CreditCard, LayoutDashboard, LogOut, ChevronDown } from 'lucide-react';
 
 interface NavbarProps {
   activeTab: string;
@@ -16,6 +17,8 @@ export const Navbar: React.FC<NavbarProps> = ({
 }) => {
   const [activeSection, setActiveSection] = useState<string>('');
   const { user, loading: authLoading, logout } = useAuth();
+  const [menuOpen, setMenuOpen] = useState(false);
+  const menuRef = useRef<HTMLDivElement>(null);
 
   useEffect(() => {
     let rafId: number;
@@ -59,6 +62,28 @@ export const Navbar: React.FC<NavbarProps> = ({
       cancelAnimationFrame(rafId);
     };
   }, [activeTab]);
+
+  // Close menu on outside click
+  useEffect(() => {
+    const handleClickOutside = (e: MouseEvent) => {
+      if (menuRef.current && !menuRef.current.contains(e.target as Node)) {
+        setMenuOpen(false);
+      }
+    };
+    const handleEscape = (e: KeyboardEvent) => {
+      if (e.key === 'Escape') setMenuOpen(false);
+    };
+    if (menuOpen) {
+      document.addEventListener('mousedown', handleClickOutside);
+      document.addEventListener('keydown', handleEscape);
+    }
+    return () => {
+      document.removeEventListener('mousedown', handleClickOutside);
+      document.removeEventListener('keydown', handleEscape);
+    };
+  }, [menuOpen]);
+
+  const initials = user ? (user.displayName || user.email || '?').split(' ').map(n => n[0]).join('').toUpperCase().slice(0, 2) : '';
 
   return (
     <header className="sticky top-0 z-50 w-full bg-[#030303]/90 backdrop-blur-md border-b border-white/5">
@@ -110,7 +135,7 @@ export const Navbar: React.FC<NavbarProps> = ({
         </nav>
 
         {/* CTA Actions */}
-        <div className="flex items-center gap-6 text-sm font-medium">
+        <div className="flex items-center gap-4 text-sm font-medium">
           {!authLoading && !user && (
             <button
               onClick={() => setActiveTab('login')}
@@ -119,25 +144,77 @@ export const Navbar: React.FC<NavbarProps> = ({
               Log in
             </button>
           )}
+
+          {/* User Avatar Menu */}
           {!authLoading && user && (
-            <>
+            <div className="relative" ref={menuRef}>
               <button
-                onClick={() => setActiveTab('dashboard')}
-                className="text-slate-300 hover:text-white transition-colors hidden sm:block"
+                onClick={() => setMenuOpen(!menuOpen)}
+                className="flex items-center gap-2 px-2 py-1.5 rounded-lg hover:bg-white/5 transition-colors"
+                aria-haspopup="true"
+                aria-expanded={menuOpen}
+                aria-label="User menu"
               >
-                Dashboard
+                {user.photoURL ? (
+                  <img src={user.photoURL} alt="" className="w-7 h-7 rounded-full object-cover border border-white/10" referrerPolicy="no-referrer" />
+                ) : (
+                  <div className="w-7 h-7 rounded-full bg-gradient-to-br from-sky-500 to-blue-600 flex items-center justify-center text-white text-[10px] font-bold border border-white/10">
+                    {initials}
+                  </div>
+                )}
+                <span className="text-sm text-slate-300 hidden sm:inline max-w-[100px] truncate">
+                  {user.displayName || user.email?.split('@')[0] || 'User'}
+                </span>
+                <ChevronDown className={`w-3.5 h-3.5 text-slate-500 transition-transform ${menuOpen ? 'rotate-180' : ''}`} />
               </button>
-              <button
-                onClick={async () => {
-                  await logout();
-                  setActiveTab('hero');
-                }}
-                className="text-slate-300 hover:text-white transition-colors hidden sm:block"
-              >
-                Log out
-              </button>
-            </>
+
+              {/* Dropdown Menu */}
+              {menuOpen && (
+                <div className="absolute right-0 top-full mt-2 w-56 bg-[#0A0E17] border border-white/10 rounded-xl shadow-2xl shadow-black/50 py-1.5 z-50 animate-in fade-in slide-in-from-top-2 duration-200">
+                  {/* User info header */}
+                  <div className="px-3.5 py-2.5 border-b border-white/5">
+                    <p className="text-sm font-medium text-white truncate">{user.displayName || 'SENSA User'}</p>
+                    <p className="text-[11px] text-slate-500 truncate">{user.email}</p>
+                  </div>
+
+                  <div className="py-1">
+                    <button
+                      onClick={() => { setActiveTab('profile'); setMenuOpen(false); }}
+                      className="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors text-left"
+                    >
+                      <User className="w-4 h-4 text-slate-500" /> Profile
+                    </button>
+                    <button
+                      onClick={() => { setActiveTab('dashboard'); setMenuOpen(false); }}
+                      className="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors text-left"
+                    >
+                      <LayoutDashboard className="w-4 h-4 text-slate-500" /> Dashboard
+                    </button>
+                    <button
+                      onClick={() => { setActiveTab('billing'); setMenuOpen(false); }}
+                      className="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-slate-300 hover:text-white hover:bg-white/5 transition-colors text-left"
+                    >
+                      <CreditCard className="w-4 h-4 text-slate-500" /> Billing
+                    </button>
+                  </div>
+
+                  <div className="border-t border-white/5 py-1">
+                    <button
+                      onClick={async () => {
+                        setMenuOpen(false);
+                        await logout();
+                        setActiveTab('hero');
+                      }}
+                      className="w-full flex items-center gap-2.5 px-3.5 py-2 text-sm text-rose-400 hover:text-rose-300 hover:bg-rose-500/5 transition-colors text-left"
+                    >
+                      <LogOut className="w-4 h-4" /> Sign Out
+                    </button>
+                  </div>
+                </div>
+              )}
+            </div>
           )}
+
           <button
             onClick={onOpenTrialModal}
             className="bg-[#5fa9f2] hover:bg-[#4d97e0] text-black px-5 py-2 rounded-full transition-all"

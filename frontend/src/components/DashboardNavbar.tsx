@@ -1,5 +1,5 @@
 import React from 'react';
-import { Camera, LayoutDashboard, Activity, Map, CreditCard, Settings } from 'lucide-react';
+import { Camera, LayoutDashboard, Activity, Map, CreditCard, Settings, User } from 'lucide-react';
 
 interface DashboardNavbarProps {
   activeTab: string;
@@ -14,6 +14,7 @@ export const DashboardNavbar: React.FC<DashboardNavbarProps> = ({ activeTab, set
     { id: 'zones', label: 'Sites & Zones', icon: Map },
     { id: 'billing', label: 'Billing', icon: CreditCard },
     { id: 'admin', label: 'Admin', icon: Settings },
+    { id: 'profile', label: 'Profile', icon: User },
   ];
 
   return (

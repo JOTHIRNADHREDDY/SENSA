@@ -19,6 +19,7 @@ import { Zap, Lock, Smartphone } from 'lucide-react';
 import { DashboardNavbar } from './components/DashboardNavbar';
 import { BillingPage } from './components/billing/BillingPage';
 import { AdminPricingDashboard } from './components/billing/AdminPricingDashboard';
+import { ProfilePage } from './components/ProfilePage';
 import { useAuth } from './lib/AuthContext';
 
 export default function App() {
@@ -95,7 +96,7 @@ export default function App() {
 
   // Protect tabs on mount or activeTab/user change
   useEffect(() => {
-    const protectedTabs = ['dashboard', 'zones', 'inspector', 'cameras', 'billing'];
+    const protectedTabs = ['dashboard', 'zones', 'inspector', 'cameras', 'billing', 'profile'];
     
     if (!authLoading) {
       if (!user && protectedTabs.includes(activeTab)) {
@@ -459,6 +460,14 @@ export default function App() {
         
         {/* Tab 7: Admin Pricing Dashboard */}
         {activeTab === 'admin' && <AdminPricingDashboard />}
+
+        {/* Tab 8: User Profile */}
+        {activeTab === 'profile' && (
+          <ProfilePage
+            onSignOut={() => setActiveTab('hero')}
+            setActiveTab={setActiveTab}
+          />
+        )}
           </motion.div>
         </AnimatePresence>
       </main>
@@ -535,6 +544,7 @@ export default function App() {
         onCompleteSignup={handleCompleteSignup}
         onOpenLegal={(type) => setLegalModalType(type as any)}
         googlePrefill={googlePrefill}
+        onSwitchToLogin={() => { setIsTrialModalOpen(false); setGooglePrefill(null); setActiveTab('login'); }}
       />
 
       <ContactSalesModal
