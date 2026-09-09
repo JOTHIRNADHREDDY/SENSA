@@ -29,47 +29,69 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onBackToApp, onOpenLegal, 
   // SSO State
   const [ssoEmail, setSsoEmail] = useState('');
 
-  const handleLogin = (e: React.FormEvent) => {
+  const handleLogin = async (e: React.FormEvent) => {
     e.preventDefault();
     if (!legalChecked) return;
     
     setIsLoading(true);
     setError(null);
     
-    // Simulate auth network request
-    setTimeout(() => {
-      setIsLoading(false);
-      // Let's simulate a success for now, but in reality we might have MFA
-      // We will randomly fail or succeed for demo if they type "error"
-      if (email.includes('error')) {
-        setError('The email or password is incorrect.');
-      } else if (email.includes('mfa')) {
-        setAuthState('mfa');
+    try {
+      const { signInWithEmailAndPassword } = await import('firebase/auth');
+      const { auth } = await import('../../lib/firebase');
+      const userCredential = await signInWithEmailAndPassword(auth, email, password);
+      
+      // Check if SENSA profile exists
+      const token = await userCredential.user.getIdToken();
+      const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+      
+      const res = await fetch(`${API_BASE_URL}/api/v1/auth/profile`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const data = await res.json();
+      
+      if (!data.exists) {
+        // Orphaned account
+        const { signOut } = await import('firebase/auth');
+        await signOut(auth);
+        setError('Account verification incomplete. Please sign up to complete your profile.');
       } else {
         onBackToApp(); // Success -> Go to dashboard
       }
-    }, 1200);
+    } catch (err: any) {
+      console.error(err);
+      if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
+        setError('The email or password is incorrect.');
+      } else {
+        setError(err.message || 'Failed to sign in.');
+      }
+    } finally {
+      setIsLoading(false);
+    }
   };
 
-  const handleForgotPassword = (e: React.FormEvent) => {
+  const handleForgotPassword = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsLoading(true);
-    setTimeout(() => {
-      setIsLoading(false);
+    try {
+      const { sendPasswordResetEmail } = await import('firebase/auth');
+      const { auth } = await import('../../lib/firebase');
+      await sendPasswordResetEmail(auth, email);
       setError('If an account is associated with this address, a password-reset link will be sent shortly.');
-    }, 1000);
+    } catch (err: any) {
+      setError(err.message || 'Failed to send reset link.');
+    } finally {
+      setIsLoading(false);
+    }
   };
 
   const handleMfaVerify = (e: React.FormEvent) => {
     e.preventDefault();
+    // MFA not yet fully implemented on backend, placeholder
     setIsLoading(true);
     setTimeout(() => {
       setIsLoading(false);
-      if (mfaCode === '000000') {
-        setError('The verification code is invalid or expired.');
-      } else {
-        onBackToApp();
-      }
+      setError('The verification code is invalid or expired.');
     }, 1000);
   };
 
@@ -78,8 +100,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onBackToApp, onOpenLegal, 
     setIsLoading(true);
     setTimeout(() => {
       setIsLoading(false);
-      // Simulate SSO redirect
-      onBackToApp();
+      setError('Enterprise SSO is not configured for this domain.');
     }, 1500);
   };
 

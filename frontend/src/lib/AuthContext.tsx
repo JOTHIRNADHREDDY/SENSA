@@ -1,5 +1,5 @@
 import React, { createContext, useContext, useEffect, useState } from 'react';
-import { User, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, getAdditionalUserInfo } from 'firebase/auth';
+import { User, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, getAdditionalUserInfo, signInWithCustomToken } from 'firebase/auth';
 import { auth } from './firebase';
 
 export interface GoogleSignInResult {
@@ -11,6 +11,7 @@ interface AuthContextType {
   user: User | null;
   loading: boolean;
   signInWithGoogle: () => Promise<GoogleSignInResult>;
+  loginWithCustomToken: (token: string) => Promise<User>;
   logout: () => Promise<void>;
 }
 
@@ -18,6 +19,7 @@ const AuthContext = createContext<AuthContextType>({
   user: null,
   loading: true,
   signInWithGoogle: async () => { throw new Error('AuthContext not initialized'); },
+  loginWithCustomToken: async () => { throw new Error('AuthContext not initialized'); },
   logout: async () => {},
 });
 
@@ -62,16 +64,25 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
+  const loginWithCustomToken = async (token: string): Promise<User> => {
+    try {
+      const result = await signInWithCustomToken(auth, token);
+      return result.user;
+    } catch (error) {
+      console.error("Error signing in with custom token", error);
+      throw error;
+    }
+  };
+
   const logout = async () => {
     await signOut(auth);
   };
 
   return (
-    <AuthContext.Provider value={{ user, loading, signInWithGoogle, logout }}>
+    <AuthContext.Provider value={{ user, loading, signInWithGoogle, loginWithCustomToken, logout }}>
       {children}
     </AuthContext.Provider>
   );
 };
 
 export const useAuth = () => useContext(AuthContext);
-

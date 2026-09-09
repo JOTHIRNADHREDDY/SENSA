@@ -1,13 +1,30 @@
 export async function firestoreQuery(env: any, collectionId: string, query: any) {
   const projectId = env.FIREBASE_PROJECT_ID || "sensa-f74e9";
   const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents:runQuery`;
+  
+  // Ensure the from collection is set
+  const structuredQuery = {
+    ...query,
+    from: query.from || [{ collectionId }]
+  };
+
   const res = await fetch(url, {
     method: "POST",
     headers: {
       "Authorization": `Bearer ${env.FIREBASE_SERVICE_ACCOUNT_TOKEN}`,
       "Content-Type": "application/json"
     },
-    body: JSON.stringify({ structuredQuery: query })
+    body: JSON.stringify({ structuredQuery })
+  });
+  return res.json();
+}
+
+export async function firestoreDelete(env: any, collection: string, id: string) {
+  const projectId = env.FIREBASE_PROJECT_ID || "sensa-f74e9";
+  const url = `https://firestore.googleapis.com/v1/projects/${projectId}/databases/(default)/documents/${collection}/${id}`;
+  const res = await fetch(url, {
+    method: "DELETE",
+    headers: { "Authorization": `Bearer ${env.FIREBASE_SERVICE_ACCOUNT_TOKEN}` }
   });
   return res.json();
 }

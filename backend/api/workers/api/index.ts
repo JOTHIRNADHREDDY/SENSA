@@ -46,6 +46,23 @@ export default {
       }
     }
 
+    // Public auth routes (OTP, registration, etc.)
+    const publicAuthRoutes = [
+      "/api/v1/auth/check",
+      "/api/v1/auth/send-otp",
+      "/api/v1/auth/verify-otp",
+      "/api/v1/auth/register",
+      "/api/v1/auth/link-google"
+    ];
+    if (publicAuthRoutes.includes(path)) {
+      try {
+        return handleAuth(request, env);
+      } catch (e: any) {
+        console.error(e);
+        return new Response(JSON.stringify({ error: "Internal Server Error" }), { status: 500, headers: { "Content-Type": "application/json" } });
+      }
+    }
+
     // Verify Auth for protected routes
     const user = await verifyAuth(request, env);
     if (!user) {

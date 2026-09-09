@@ -1,11 +1,9 @@
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
-import React, { useState, useEffect, useRef, useCallback } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { DataStorageMode } from '../types';
 import { X, CheckCircle2, ArrowRight, RefreshCw, Zap, Cloud, HardDrive, Info, AlertCircle, Eye, EyeOff, ArrowLeft, Check, Shield } from 'lucide-react';
 import { legalDocuments } from '../data/legalDocuments';
 import { PhoneInput, PhoneData } from './PhoneInput';
-import { RecaptchaVerifier, signInWithPhoneNumber, ConfirmationResult, linkWithPhoneNumber } from 'firebase/auth';
-import { auth } from '../lib/firebase';
 import { useAuth } from '../lib/AuthContext';
 
 interface SignupModalProps {
@@ -15,6 +13,7 @@ interface SignupModalProps {
   onOpenLegal: (type: string) => void;
   onSwitchToLogin?: () => void;
   googlePrefill?: {
+    uid?: string;
     displayName: string | null;
     email: string | null;
     photoURL: string | null;
@@ -38,29 +37,9 @@ function getPasswordStrength(pw: string): { score: number; label: string; color:
   return { score, label: 'Very strong', color: 'bg-emerald-500', checks };
 }
 
-// Map Firebase error codes to user-friendly messages
-function getPhoneAuthErrorMessage(error: any): string {
-  const code = error?.code || '';
-  const map: Record<string, string> = {
-    'auth/invalid-phone-number': 'The phone number format is invalid. Please check and try again.',
-    'auth/missing-phone-number': 'Please enter a phone number.',
-    'auth/too-many-requests': 'Too many attempts. Please wait a few minutes before trying again.',
-    'auth/quota-exceeded': 'SMS quota exceeded. Please try again later.',
-    'auth/captcha-check-failed': 'Security verification failed. Please refresh and try again.',
-    'auth/recaptcha-not-enabled': 'Security verification failed. Please refresh and try again.',
-    'auth/network-request-failed': 'Network error. Please check your internet connection.',
-    'auth/operation-not-allowed': 'Phone authentication is not enabled. Please contact support.',
-    'auth/app-not-authorized': 'This app is not authorized for phone authentication.',
-    'auth/invalid-verification-code': 'The verification code is incorrect. Please check and try again.',
-    'auth/code-expired': 'The verification code has expired. Please request a new one.',
-    'auth/credential-already-in-use': 'This phone number is already linked to another account.',
-  };
-  return map[code] || error?.message || 'Unable to send the verification code. Please check your number and try again.';
-}
-
 export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCompleteSignup, onOpenLegal, onSwitchToLogin, googlePrefill }) => {
   const shouldReduceMotion = useReducedMotion();
-  const { user, signInWithGoogle } = useAuth();
+  const { signInWithGoogle, loginWithCustomToken } = useAuth();
   const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
   const [phoneData, setPhoneData] = useState<PhoneData>({
     country_code: '+91', country_iso2: 'IN', country_name: 'India',
@@ -82,18 +61,16 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
   const [storageMode, setStorageMode] = useState<DataStorageMode>('hybrid');
+  const [verificationToken, setVerificationToken] = useState<string | null>(null);
 
   // Legal State
   const [legalAccepted, setLegalAccepted] = useState(false);
   const [marketingConsent, setMarketingConsent] = useState(false);
 
-  // Firebase Phone Auth State
-  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
-  const recaptchaVerifierRef = useRef<RecaptchaVerifier | null>(null);
-  const recaptchaContainerRef = useRef<HTMLDivElement>(null);
-
   const isGoogleFlow = !!googlePrefill;
   const pwStrength = getPasswordStrength(password);
+
+  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
 
   // Prefill from Google
   useEffect(() => {
@@ -103,11 +80,6 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
       setStep(1);
     }
   }, [googlePrefill]);
-
-  // Reset on close
-  useEffect(() => {
-    if (!isOpen) cleanupRecaptcha();
-  }, [isOpen]);
 
   // OTP countdown
   useEffect(() => {
@@ -120,30 +92,6 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
     }, 1000);
     return () => clearInterval(interval);
   }, [step, timerSeconds]);
-
-  const cleanupRecaptcha = useCallback(() => {
-    if (recaptchaVerifierRef.current) {
-      try { recaptchaVerifierRef.current.clear(); } catch {}
-      recaptchaVerifierRef.current = null;
-    }
-  }, []);
-
-  const initRecaptcha = useCallback(() => {
-    cleanupRecaptcha();
-    if (!recaptchaContainerRef.current) return null;
-    try {
-      const verifier = new RecaptchaVerifier(auth, recaptchaContainerRef.current, {
-        size: 'invisible',
-        callback: () => {},
-        'expired-callback': () => { setErrorMsg('Security verification expired. Please try again.'); cleanupRecaptcha(); }
-      });
-      recaptchaVerifierRef.current = verifier;
-      return verifier;
-    } catch {
-      setErrorMsg('Failed to initialize security verification. Please refresh.');
-      return null;
-    }
-  }, [cleanupRecaptcha]);
 
   // Validate step 1 fields
   const validateStep1 = (): boolean => {
@@ -170,22 +118,34 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
     setLoading(true);
 
     try {
-      const verifier = initRecaptcha();
-      if (!verifier) { setLoading(false); return; }
-
-      let result: ConfirmationResult;
-      if (user && isGoogleFlow) {
-        result = await linkWithPhoneNumber(user, phoneData.phone_e164, verifier);
-      } else {
-        result = await signInWithPhoneNumber(auth, phoneData.phone_e164, verifier);
+      // Check Uniqueness
+      const checkRes = await fetch(`${API_BASE_URL}/api/v1/auth/check`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ email, phone: phoneData.phone_e164 })
+      });
+      const checkData = await checkRes.json();
+      if (checkData.exists) {
+        if (checkData.emailExists) setErrorMsg('Email is already registered. Please log in.');
+        else if (checkData.phoneExists) setErrorMsg('Phone number is already registered. Please log in.');
+        setLoading(false);
+        return;
       }
-      setConfirmationResult(result);
+
+      // Request OTP
+      const otpRes = await fetch(`${API_BASE_URL}/api/v1/auth/send-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: phoneData.phone_e164 })
+      });
+      const otpData = await otpRes.json();
+      if (!otpRes.ok) throw new Error(otpData.error || 'Failed to send OTP');
+
       setStep(2);
       setTimerSeconds(60);
       setCanResend(false);
     } catch (error: any) {
-      setErrorMsg(getPhoneAuthErrorMessage(error));
-      cleanupRecaptcha();
+      setErrorMsg(error.message || 'Network error. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -219,15 +179,23 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
     e.preventDefault();
     const fullOtp = otp.join('');
     if (fullOtp.length < 6) { setErrorMsg('Please enter the complete 6-digit code'); return; }
-    if (!confirmationResult) { setErrorMsg('Verification session expired. Please request a new code.'); return; }
     if (loading) return;
     setErrorMsg('');
     setLoading(true);
+
     try {
-      await confirmationResult.confirm(fullOtp);
+      const res = await fetch(`${API_BASE_URL}/api/v1/auth/verify-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: phoneData.phone_e164, otp: fullOtp })
+      });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || 'Invalid OTP');
+
+      setVerificationToken(data.verificationToken);
       setStep(3);
     } catch (error: any) {
-      setErrorMsg(getPhoneAuthErrorMessage(error));
+      setErrorMsg(error.message);
     } finally {
       setLoading(false);
     }
@@ -238,21 +206,20 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
     setErrorMsg('');
     setLoading(true);
     setOtp(['', '', '', '', '', '']);
+    
     try {
-      const verifier = initRecaptcha();
-      if (!verifier) { setLoading(false); return; }
-      let result: ConfirmationResult;
-      if (user && isGoogleFlow) {
-        result = await linkWithPhoneNumber(user, phoneData.phone_e164, verifier);
-      } else {
-        result = await signInWithPhoneNumber(auth, phoneData.phone_e164, verifier);
-      }
-      setConfirmationResult(result);
+      const otpRes = await fetch(`${API_BASE_URL}/api/v1/auth/send-otp`, {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ phone: phoneData.phone_e164 })
+      });
+      const otpData = await otpRes.json();
+      if (!otpRes.ok) throw new Error(otpData.error || 'Failed to send OTP');
+
       setTimerSeconds(60);
       setCanResend(false);
     } catch (error: any) {
-      setErrorMsg(getPhoneAuthErrorMessage(error));
-      cleanupRecaptcha();
+      setErrorMsg(error.message);
     } finally {
       setLoading(false);
     }
@@ -260,33 +227,60 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
 
   const handleCompleteProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (loading) return;
+    if (loading || !verificationToken) return;
     setErrorMsg('');
     setLoading(true);
+    
     try {
-      const currentUser = auth.currentUser;
-      if (!currentUser) { setErrorMsg('Authentication session lost. Please try again.'); setLoading(false); return; }
-      const token = await currentUser.getIdToken();
-      const res = await fetch((import.meta.env.VITE_API_BASE_URL || '') + '/api/v1/auth/profile', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({
-          displayName: fullName, email, phone: phoneData.phone_e164,
-          photoURL: googlePrefill?.photoURL || '', storageMode,
-          provider: isGoogleFlow ? 'google' : 'phone',
-          legalAccepted: true, termsVersion: legalDocuments.terms.version,
-          privacyVersion: legalDocuments.privacy.version, marketingConsent,
-        })
-      });
-      if (!res.ok) { const data = await res.json(); throw new Error(data.error || 'Failed to create profile'); }
-      setStep(4);
-      // Auto-close after success
-      setTimeout(() => {
-        onCompleteSignup(phoneData.phone_e164, storageMode);
-        onClose();
-      }, 2000);
+      if (isGoogleFlow) {
+        // Link Google Account
+        const res = await fetch(`${API_BASE_URL}/api/v1/auth/link-google`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            verificationToken,
+            uid: googlePrefill?.uid,
+            email,
+            displayName: fullName,
+            photoURL: googlePrefill?.photoURL,
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to link account');
+        
+        // Since Google user is already logged in, we just proceed
+        setStep(4);
+        setTimeout(() => {
+          onCompleteSignup(phoneData.phone_e164, storageMode);
+          onClose();
+        }, 2000);
+      } else {
+        // Standard Registration
+        const res = await fetch(`${API_BASE_URL}/api/v1/auth/register`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            verificationToken,
+            email,
+            password,
+            displayName: fullName,
+            firebaseApiKey: import.meta.env.VITE_FIREBASE_API_KEY
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to create account');
+
+        // Log the user in with the returned custom token
+        await loginWithCustomToken(data.firebaseToken);
+        
+        setStep(4);
+        setTimeout(() => {
+          onCompleteSignup(phoneData.phone_e164, storageMode);
+          onClose();
+        }, 2000);
+      }
     } catch (error: any) {
-      setErrorMsg(error.message || 'Failed to create account. Please try again.');
+      setErrorMsg(error.message || 'Failed to complete registration. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -302,8 +296,20 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
         setFullName(result.user.displayName || '');
         setEmail(result.user.email || '');
       } else {
-        // Existing user — close and go to dashboard
-        onClose();
+        // Check if profile exists in our DB
+        const token = await result.user.getIdToken();
+        const checkRes = await fetch(`${API_BASE_URL}/api/v1/auth/profile`, {
+          headers: { 'Authorization': `Bearer ${token}` }
+        });
+        const checkData = await checkRes.json();
+        
+        if (checkData.exists) {
+          onClose(); // Existing user -> dashboard
+        } else {
+          // Orphaned Google User
+          setFullName(result.user.displayName || '');
+          setEmail(result.user.email || '');
+        }
       }
     } catch (err: any) {
       setErrorMsg(err?.message || 'Failed to sign in with Google');
@@ -341,9 +347,6 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
             transition={{ duration: shouldReduceMotion ? 0 : 0.3, ease: 'easeOut' }}
             className="max-w-lg w-full bg-[#0A0E17] border border-white/[0.06] rounded-2xl shadow-2xl shadow-black/60 relative my-8"
           >
-            {/* reCAPTCHA container */}
-            <div ref={recaptchaContainerRef} id="recaptcha-container"></div>
-
             {/* Close button */}
             <button onClick={onClose} className="absolute top-4 right-4 p-2 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors z-10" aria-label="Close">
               <X className="w-4 h-4" />
@@ -578,7 +581,7 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
                       className="text-xs font-mono text-slate-400 hover:text-sky-400 disabled:opacity-50 transition-colors">
                       {canResend ? 'Resend Code' : `Resend in ${timerSeconds}s`}
                     </button>
-                    <button type="button" onClick={() => { setStep(1); setOtp(['','','','','','']); setErrorMsg(''); setConfirmationResult(null); cleanupRecaptcha(); }}
+                    <button type="button" onClick={() => { setStep(1); setOtp(['','','','','','']); setErrorMsg(''); }}
                       className="block w-full text-xs text-slate-500 hover:text-slate-300 transition-colors">
                       <ArrowLeft className="w-3 h-3 inline mr-1" />Change number
                     </button>
