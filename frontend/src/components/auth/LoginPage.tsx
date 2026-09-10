@@ -7,7 +7,7 @@ interface LoginPageProps {
   onOpenLegal: (type: 'terms' | 'privacy') => void;
   onCreateAccount: () => void;
   onGoHome: () => void;
-  onGoogleNewUser?: (userData: { displayName: string | null; email: string | null; photoURL: string | null }) => void;
+  onGoogleNewUser?: (userData: { uid: string; displayName: string | null; email: string | null; photoURL: string | null }) => void;
 }
 
 type AuthState = 'login' | 'forgot' | 'mfa' | 'sso';
@@ -338,16 +338,28 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onBackToApp, onOpenLegal, 
                         setIsLoading(true);
                         setError(null);
                         const result = await signInWithGoogle();
-                        if (result.isNewUser && onGoogleNewUser) {
-                          // New Google user — open registration to complete profile
-                          onGoogleNewUser({
-                            displayName: result.user.displayName,
-                            email: result.user.email,
-                            photoURL: result.user.photoURL,
-                          });
-                        } else {
-                          // Existing user — go to dashboard
+                        
+                        // Always check if SENSA profile exists with verified phone
+                        const token = await result.user.getIdToken();
+                        const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+                        const res = await fetch(`${API_BASE_URL}/api/v1/auth/profile`, {
+                          headers: { 'Authorization': `Bearer ${token}` }
+                        });
+                        const data = await res.json();
+                        
+                        if (data.exists && data.profile?.fields?.phone?.stringValue) {
+                          // Existing user with verified phone — go to dashboard
                           onBackToApp();
+                        } else {
+                          // No profile or no phone — force phone verification via signup modal
+                          if (onGoogleNewUser) {
+                            onGoogleNewUser({
+                              uid: result.user.uid,
+                              displayName: result.user.displayName,
+                              email: result.user.email,
+                              photoURL: result.user.photoURL,
+                            });
+                          }
                         }
                       } catch (err: any) {
                         setError(err?.message || 'Failed to sign in with Google');
@@ -355,6 +367,7 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onBackToApp, onOpenLegal, 
                         setIsLoading(false);
                       }
                     }}
+
                     className="w-full bg-[#030303] border border-white/10 hover:border-white/20 hover:bg-white/5 text-slate-300 py-2.5 rounded-lg text-sm flex items-center justify-center gap-3 transition-colors"
                   >
                     <svg className="w-4 h-4" viewBox="0 0 24 24">

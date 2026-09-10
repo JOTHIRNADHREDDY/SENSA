@@ -292,24 +292,21 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
     setErrorMsg('');
     try {
       const result = await signInWithGoogle();
-      if (result.isNewUser) {
+      
+      // Always check if SENSA profile exists with verified phone
+      const token = await result.user.getIdToken();
+      const checkRes = await fetch(`${API_BASE_URL}/api/v1/auth/profile`, {
+        headers: { 'Authorization': `Bearer ${token}` }
+      });
+      const checkData = await checkRes.json();
+      
+      if (checkData.exists && checkData.profile?.fields?.phone?.stringValue) {
+        // Existing user with verified phone — close modal
+        onClose();
+      } else {
+        // No profile or no phone — force phone verification
         setFullName(result.user.displayName || '');
         setEmail(result.user.email || '');
-      } else {
-        // Check if profile exists in our DB
-        const token = await result.user.getIdToken();
-        const checkRes = await fetch(`${API_BASE_URL}/api/v1/auth/profile`, {
-          headers: { 'Authorization': `Bearer ${token}` }
-        });
-        const checkData = await checkRes.json();
-        
-        if (checkData.exists) {
-          onClose(); // Existing user -> dashboard
-        } else {
-          // Orphaned Google User
-          setFullName(result.user.displayName || '');
-          setEmail(result.user.email || '');
-        }
       }
     } catch (err: any) {
       setErrorMsg(err?.message || 'Failed to sign in with Google');
@@ -317,6 +314,7 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
       setGoogleLoading(false);
     }
   };
+
 
   const FieldError: React.FC<{ field: string }> = ({ field }) => {
     const err = fieldErrors[field];

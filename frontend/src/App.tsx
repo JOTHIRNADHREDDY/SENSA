@@ -35,7 +35,7 @@ export default function App() {
   const [isCompatibilityModalOpen, setIsCompatibilityModalOpen] = useState<boolean>(false);
   const [legalModalType, setLegalModalType] = useState<'terms' | 'privacy' | null>(null);
   const [selectedDrawerCamId, setSelectedDrawerCamId] = useState<string>('cam-01');
-  const [googlePrefill, setGooglePrefill] = useState<{ displayName: string | null; email: string | null; photoURL: string | null } | null>(null);
+  const [googlePrefill, setGooglePrefill] = useState<{ uid?: string; displayName: string | null; email: string | null; photoURL: string | null } | null>(null);
 
   // Load data from backend when user changes
   useEffect(() => {
@@ -302,6 +302,7 @@ export default function App() {
           onGoHome={() => setActiveTab('hero')}
           onGoogleNewUser={(userData) => {
             setGooglePrefill(userData);
+            setActiveTab('hero');
             setIsTrialModalOpen(true);
           }}
         />
