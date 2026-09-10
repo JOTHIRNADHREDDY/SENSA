@@ -10,29 +10,61 @@ import { handleAlerts } from "../alerts";
 import { handleTelemetry } from "../telemetry";
 import { handleWebhooks } from "../webhooks";
 
+// Allowed origins for CORS
+const ALLOWED_ORIGINS = [
+  "https://sensa-flax.vercel.app",
+  "https://app.sensa.io",
+  "http://localhost:5173",
+  "http://localhost:3000",
+];
+
+/** Return CORS headers for the given request origin. */
+function getCorsHeaders(request: Request, env: any): Record<string, string> {
+  const origin = request.headers.get("Origin") || "";
+  // Allow any origin listed in the static list, env override, or any *.vercel.app preview deploy
+  const allowed =
+    ALLOWED_ORIGINS.includes(origin) ||
+    origin === (env.FRONTEND_URL || "") ||
+    origin.endsWith(".vercel.app");
+
+  return {
+    "Access-Control-Allow-Origin": allowed ? origin : ALLOWED_ORIGINS[0],
+    "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
+    "Access-Control-Allow-Headers": "Content-Type, Authorization",
+  };
+}
+
+/** Attach CORS headers to any Response. */
+function withCors(response: Response, corsHeaders: Record<string, string>): Response {
+  const newHeaders = new Headers(response.headers);
+  for (const [key, value] of Object.entries(corsHeaders)) {
+    newHeaders.set(key, value);
+  }
+  return new Response(response.body, {
+    status: response.status,
+    statusText: response.statusText,
+    headers: newHeaders,
+  });
+}
+
 export default {
   async fetch(request: Request, env: any, ctx: any): Promise<Response> {
     const url = new URL(request.url);
     const path = url.pathname;
+    const corsHeaders = getCorsHeaders(request, env);
 
     // CORS preflight
     if (request.method === "OPTIONS") {
-      return new Response(null, {
-        headers: {
-          "Access-Control-Allow-Origin": env.FRONTEND_URL || "https://app.sensa.io",
-          "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS",
-          "Access-Control-Allow-Headers": "Content-Type, Authorization",
-        }
-      });
+      return new Response(null, { headers: corsHeaders });
     }
 
     // Public webhooks
-    if (path.startsWith("/api/v1/webhooks")) return handleWebhooks(request, env);
+    if (path.startsWith("/api/v1/webhooks")) return withCors(await handleWebhooks(request, env), corsHeaders);
 
     // VASAI Frontend Compatibility Endpoints (Public)
     if (path.startsWith("/api/pricing") || path.startsWith("/api/health") || path.startsWith("/api/analyze-snapshot") || path.startsWith("/api/send-whatsapp-test")) {
       const { handleVasaiCompat } = await import("../sensa-compat");
-      return handleVasaiCompat(request, env);
+      return withCors(await handleVasaiCompat(request, env), corsHeaders);
     }
 
     // Placeholder for Rate Limiting middleware
@@ -40,9 +72,9 @@ export default {
       const ip = request.headers.get("CF-Connecting-IP") || "unknown";
       const { success } = await env.RATE_LIMITER.limit({ key: ip });
       if (!success) {
-        return new Response(JSON.stringify({ error: "Too Many Requests" }), { 
+        return withCors(new Response(JSON.stringify({ error: "Too Many Requests" }), { 
           status: 429, headers: { "Content-Type": "application/json" } 
-        });
+        }), corsHeaders);
       }
     }
 
@@ -56,19 +88,19 @@ export default {
     ];
     if (publicAuthRoutes.includes(path)) {
       try {
-        return handleAuth(request, env);
+        return withCors(await handleAuth(request, env), corsHeaders);
       } catch (e: any) {
         console.error(e);
-        return new Response(JSON.stringify({ error: "Internal Server Error" }), { status: 500, headers: { "Content-Type": "application/json" } });
+        return withCors(new Response(JSON.stringify({ error: "Internal Server Error" }), { status: 500, headers: { "Content-Type": "application/json" } }), corsHeaders);
       }
     }
 
     // Verify Auth for protected routes
     const user = await verifyAuth(request, env);
     if (!user) {
-      return new Response(JSON.stringify({ error: "Unauthorized" }), { 
+      return withCors(new Response(JSON.stringify({ error: "Unauthorized" }), { 
         status: 401, headers: { "Content-Type": "application/json" } 
-      });
+      }), corsHeaders);
     }
 
     // Attach user to request conceptually (since Request is immutable, we pass it down)
@@ -76,20 +108,23 @@ export default {
     (ctxRequest as any).user = user;
 
     try {
-      if (path.startsWith("/api/v1/auth")) return handleAuth(ctxRequest, env);
-      if (path.startsWith("/api/v1/organizations")) return handleOrganizations(ctxRequest, env);
-      if (path.startsWith("/api/v1/memberships")) return handleMemberships(ctxRequest, env);
-      if (path.startsWith("/api/v1/billing")) return handleBilling(ctxRequest, env);
-      if (path.startsWith("/api/v1/licenses")) return handleLicense(ctxRequest, env);
-      if (path.startsWith("/api/v1/sites")) return handleSites(ctxRequest, env);
-      if (path.startsWith("/api/v1/cameras")) return handleCameras(ctxRequest, env);
-      if (path.startsWith("/api/v1/alerts")) return handleAlerts(ctxRequest, env);
-      if (path.startsWith("/api/v1/telemetry")) return handleTelemetry(ctxRequest, env);
+      let response: Response;
+      if (path.startsWith("/api/v1/auth")) response = await handleAuth(ctxRequest, env);
+      else if (path.startsWith("/api/v1/organizations")) response = await handleOrganizations(ctxRequest, env);
+      else if (path.startsWith("/api/v1/memberships")) response = await handleMemberships(ctxRequest, env);
+      else if (path.startsWith("/api/v1/billing")) response = await handleBilling(ctxRequest, env);
+      else if (path.startsWith("/api/v1/licenses")) response = await handleLicense(ctxRequest, env);
+      else if (path.startsWith("/api/v1/sites")) response = await handleSites(ctxRequest, env);
+      else if (path.startsWith("/api/v1/cameras")) response = await handleCameras(ctxRequest, env);
+      else if (path.startsWith("/api/v1/alerts")) response = await handleAlerts(ctxRequest, env);
+      else if (path.startsWith("/api/v1/telemetry")) response = await handleTelemetry(ctxRequest, env);
+      else response = new Response(JSON.stringify({ error: "Not Found" }), { status: 404, headers: { "Content-Type": "application/json" } });
 
-      return new Response(JSON.stringify({ error: "Not Found" }), { status: 404, headers: { "Content-Type": "application/json" } });
+      return withCors(response, corsHeaders);
     } catch (e: any) {
       console.error(e);
-      return new Response(JSON.stringify({ error: "Internal Server Error" }), { status: 500, headers: { "Content-Type": "application/json" } });
+      return withCors(new Response(JSON.stringify({ error: "Internal Server Error" }), { status: 500, headers: { "Content-Type": "application/json" } }), corsHeaders);
     }
   },
 };
+
