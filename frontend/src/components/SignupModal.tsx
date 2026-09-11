@@ -1,102 +1,64 @@
 import { motion, AnimatePresence, useReducedMotion } from 'motion/react';
-import React, { useState, useEffect, useCallback } from 'react';
+import React, { useState, useEffect } from 'react';
+import { X, CheckCircle2, ArrowRight, RefreshCw, AlertCircle, Eye, EyeOff, HardDrive, Zap, Cloud, Info, Check } from 'lucide-react';
 import { DataStorageMode } from '../types';
-import { X, CheckCircle2, ArrowRight, RefreshCw, Zap, Cloud, HardDrive, Info, AlertCircle, Eye, EyeOff, ArrowLeft, Check, Shield } from 'lucide-react';
-import { legalDocuments } from '../data/legalDocuments';
-import { PhoneInput, PhoneData } from './PhoneInput';
 import { useAuth } from '../lib/AuthContext';
 
 interface SignupModalProps {
   isOpen: boolean;
   onClose: () => void;
   onCompleteSignup: (phone: string, mode: DataStorageMode) => void;
-  onOpenLegal: (type: string) => void;
+  onOpenLegal: (type: 'terms' | 'privacy' | 'cctvNotice' | 'aiNotice') => void;
+  googlePrefill?: { uid?: string; displayName: string | null; email: string | null; photoURL: string | null } | null;
   onSwitchToLogin?: () => void;
-  googlePrefill?: {
-    uid?: string;
-    displayName: string | null;
-    email: string | null;
-    photoURL: string | null;
-  } | null;
 }
 
-// Password strength checker
-function getPasswordStrength(pw: string): { score: number; label: string; color: string; checks: { label: string; met: boolean }[] } {
-  const checks = [
-    { label: 'At least 8 characters', met: pw.length >= 8 },
-    { label: 'Uppercase letter', met: /[A-Z]/.test(pw) },
-    { label: 'Lowercase letter', met: /[a-z]/.test(pw) },
-    { label: 'Number', met: /\d/.test(pw) },
-    { label: 'Special character', met: /[^A-Za-z0-9]/.test(pw) },
-  ];
-  const score = checks.filter(c => c.met).length;
-  if (score <= 1) return { score, label: 'Very weak', color: 'bg-red-500', checks };
-  if (score === 2) return { score, label: 'Weak', color: 'bg-orange-500', checks };
-  if (score === 3) return { score, label: 'Fair', color: 'bg-amber-500', checks };
-  if (score === 4) return { score, label: 'Strong', color: 'bg-emerald-400', checks };
-  return { score, label: 'Very strong', color: 'bg-emerald-500', checks };
-}
-
-export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCompleteSignup, onOpenLegal, onSwitchToLogin, googlePrefill }) => {
+export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCompleteSignup, onOpenLegal, googlePrefill, onSwitchToLogin }) => {
   const shouldReduceMotion = useReducedMotion();
-  const { signInWithGoogle, loginWithCustomToken } = useAuth();
-  const [step, setStep] = useState<1 | 2 | 3 | 4>(1);
-  const [phoneData, setPhoneData] = useState<PhoneData>({
-    country_code: '+91', country_iso2: 'IN', country_name: 'India',
-    phone_number: '', phone_e164: '+91', is_valid: false
-  });
-  const [otp, setOtp] = useState<string[]>(['', '', '', '', '', '']);
-  const [timerSeconds, setTimerSeconds] = useState(60);
-  const [canResend, setCanResend] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [googleLoading, setGoogleLoading] = useState(false);
-  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
-  const [errorMsg, setErrorMsg] = useState('');
-
-  // Form State
+  const { loginWithCustomToken, signInWithGoogle } = useAuth();
+  
+  const [step, setStep] = useState(1);
   const [fullName, setFullName] = useState('');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [confirmPassword, setConfirmPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
   const [showConfirmPassword, setShowConfirmPassword] = useState(false);
-  const [storageMode, setStorageMode] = useState<DataStorageMode>('hybrid');
-  const [verificationToken, setVerificationToken] = useState<string | null>(null);
-
-  // Legal State
+  
   const [legalAccepted, setLegalAccepted] = useState(false);
   const [marketingConsent, setMarketingConsent] = useState(false);
-
-  const isGoogleFlow = !!googlePrefill;
-  const pwStrength = getPasswordStrength(password);
+  
+  const [storageMode, setStorageMode] = useState<DataStorageMode>('hybrid');
+  
+  const [loading, setLoading] = useState(false);
+  const [googleLoading, setGoogleLoading] = useState(false);
+  const [errorMsg, setErrorMsg] = useState('');
+  const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
   const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+  const isGoogleFlow = !!googlePrefill;
 
-  // Prefill from Google
   useEffect(() => {
-    if (googlePrefill) {
-      if (googlePrefill.displayName) setFullName(googlePrefill.displayName);
-      if (googlePrefill.email) setEmail(googlePrefill.email);
+    if (isOpen) {
+      if (googlePrefill) {
+        setFullName(googlePrefill.displayName || '');
+        setEmail(googlePrefill.email || '');
+      } else {
+        setFullName('');
+        setEmail('');
+      }
+      setPassword('');
+      setConfirmPassword('');
       setStep(1);
+      setErrorMsg('');
+      setFieldErrors({});
+      setLegalAccepted(false);
     }
-  }, [googlePrefill]);
+  }, [isOpen, googlePrefill]);
 
-  // OTP countdown
-  useEffect(() => {
-    if (step !== 2 || timerSeconds <= 0) return;
-    const interval = setInterval(() => {
-      setTimerSeconds(prev => {
-        if (prev <= 1) { setCanResend(true); return 0; }
-        return prev - 1;
-      });
-    }, 1000);
-    return () => clearInterval(interval);
-  }, [step, timerSeconds]);
-
-  // Validate step 1 fields
-  const validateStep1 = (): boolean => {
+  const validateStep1 = () => {
     const errors: Record<string, string> = {};
-    if (!fullName.trim()) errors.fullName = 'Full name is required';
+    if (!fullName.trim()) errors.fullName = 'Full Name is required';
     if (!email.trim()) errors.email = 'Email is required';
     else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(email)) errors.email = 'Enter a valid email address';
     if (!isGoogleFlow) {
@@ -105,7 +67,6 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
       if (!confirmPassword) errors.confirmPassword = 'Please confirm your password';
       else if (password !== confirmPassword) errors.confirmPassword = 'Passwords do not match';
     }
-    if (!phoneData.is_valid) errors.phone = 'Enter a valid mobile number';
     if (!legalAccepted) errors.legal = 'You must accept the Terms and Privacy Policy';
     setFieldErrors(errors);
     return Object.keys(errors).length === 0;
@@ -118,32 +79,20 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
     setLoading(true);
 
     try {
-      // Check Uniqueness
-      const checkRes = await fetch(`${API_BASE_URL}/api/v1/auth/check`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ email, phone: phoneData.phone_e164 })
-      });
-      const checkData = await checkRes.json();
-      if (checkData.exists) {
-        if (checkData.emailExists) setErrorMsg('Email is already registered. Please log in.');
-        else if (checkData.phoneExists) setErrorMsg('Phone number is already registered. Please log in.');
-        setLoading(false);
-        return;
+      if (!isGoogleFlow) {
+        const checkRes = await fetch(`${API_BASE_URL}/api/v1/auth/check`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email: email.toLowerCase().trim() })
+        });
+        const checkData = await checkRes.json();
+        if (checkData.exists || checkData.emailExists) {
+          setErrorMsg('Email is already in use. Please sign in instead.');
+          setLoading(false);
+          return;
+        }
       }
-
-      // Request OTP
-      const otpRes = await fetch(`${API_BASE_URL}/api/v1/auth/send-otp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: phoneData.phone_e164 })
-      });
-      const otpData = await otpRes.json();
-      if (!otpRes.ok) throw new Error(otpData.error || 'Failed to send OTP');
-
       setStep(2);
-      setTimerSeconds(60);
-      setCanResend(false);
     } catch (error: any) {
       setErrorMsg(error.message || 'Network error. Please try again.');
     } finally {
@@ -151,94 +100,18 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
     }
   };
 
-  const handleOtpInput = (val: string, index: number) => {
-    const clean = val.replace(/\D/g, '');
-    const newOtp = [...otp];
-    newOtp[index] = clean;
-    setOtp(newOtp);
-    if (clean && index < 5) document.getElementById(`otp-input-${index + 1}`)?.focus();
-  };
-
-  const handleOtpPaste = (e: React.ClipboardEvent) => {
-    e.preventDefault();
-    const pasted = e.clipboardData.getData('text').replace(/\D/g, '').slice(0, 6);
-    if (pasted.length > 0) {
-      const newOtp = Array.from({ length: 6 }, (_, i) => pasted[i] || '');
-      setOtp(newOtp);
-      document.getElementById(`otp-input-${Math.min(pasted.length, 5)}`)?.focus();
-    }
-  };
-
-  const handleOtpKeyDown = (e: React.KeyboardEvent, index: number) => {
-    if (e.key === 'Backspace' && !otp[index] && index > 0) {
-      document.getElementById(`otp-input-${index - 1}`)?.focus();
-    }
-  };
-
-  const handleVerifyOtp = async (e: React.FormEvent) => {
-    e.preventDefault();
-    const fullOtp = otp.join('');
-    if (fullOtp.length < 6) { setErrorMsg('Please enter the complete 6-digit code'); return; }
-    if (loading) return;
-    setErrorMsg('');
-    setLoading(true);
-
-    try {
-      const res = await fetch(`${API_BASE_URL}/api/v1/auth/verify-otp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: phoneData.phone_e164, otp: fullOtp })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Invalid OTP');
-
-      setVerificationToken(data.verificationToken);
-      setStep(3);
-    } catch (error: any) {
-      setErrorMsg(error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleResendOtp = async () => {
-    if (!canResend || loading) return;
-    setErrorMsg('');
-    setLoading(true);
-    setOtp(['', '', '', '', '', '']);
-    
-    try {
-      const otpRes = await fetch(`${API_BASE_URL}/api/v1/auth/send-otp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ phone: phoneData.phone_e164 })
-      });
-      const otpData = await otpRes.json();
-      if (!otpRes.ok) throw new Error(otpData.error || 'Failed to send OTP');
-
-      setTimerSeconds(60);
-      setCanResend(false);
-    } catch (error: any) {
-      setErrorMsg(error.message);
-    } finally {
-      setLoading(false);
-    }
-  };
-
   const handleCompleteProfile = async (e: React.FormEvent) => {
     e.preventDefault();
-    if (loading || !verificationToken) return;
+    if (loading) return;
     setErrorMsg('');
     setLoading(true);
     
     try {
       if (isGoogleFlow) {
-        // Link Google Account
         const res = await fetch(`${API_BASE_URL}/api/v1/auth/link-google`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            verificationToken,
             uid: googlePrefill?.uid,
             email,
             displayName: fullName,
@@ -246,22 +119,19 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
           })
         });
         const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Failed to link account');
+        if (!res.ok) throw new Error(data.error || 'Failed to create account');
         
-        // Since Google user is already logged in, we just proceed
-        setStep(4);
+        setStep(3);
         setTimeout(() => {
-          onCompleteSignup(phoneData.phone_e164, storageMode);
+          onCompleteSignup('', storageMode);
           onClose();
         }, 2000);
       } else {
-        // Standard Registration
         const res = await fetch(`${API_BASE_URL}/api/v1/auth/register`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({
-            verificationToken,
-            email,
+            email: email.toLowerCase().trim(),
             password,
             displayName: fullName,
             firebaseApiKey: import.meta.env.VITE_FIREBASE_API_KEY
@@ -270,12 +140,11 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
         const data = await res.json();
         if (!res.ok) throw new Error(data.error || 'Failed to create account');
 
-        // Log the user in with the returned custom token
         await loginWithCustomToken(data.firebaseToken);
         
-        setStep(4);
+        setStep(3);
         setTimeout(() => {
-          onCompleteSignup(phoneData.phone_e164, storageMode);
+          onCompleteSignup('', storageMode);
           onClose();
         }, 2000);
       }
@@ -293,20 +162,20 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
     try {
       const result = await signInWithGoogle();
       
-      // Always check if SENSA profile exists with verified phone
       const token = await result.user.getIdToken();
       const checkRes = await fetch(`${API_BASE_URL}/api/v1/auth/profile`, {
         headers: { 'Authorization': `Bearer ${token}` }
       });
       const checkData = await checkRes.json();
       
-      if (checkData.exists && checkData.profile?.fields?.phone?.stringValue) {
-        // Existing user with verified phone — close modal
+      if (checkData.exists) {
         onClose();
       } else {
-        // No profile or no phone — force phone verification
         setFullName(result.user.displayName || '');
         setEmail(result.user.email || '');
+        // Transition to step 2 directly for Google user without profile
+        // But need them to accept legal first? Actually let's just prefill and stay on step 1.
+        // They need to click continue to accept terms.
       }
     } catch (err: any) {
       setErrorMsg(err?.message || 'Failed to sign in with Google');
@@ -315,19 +184,16 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
     }
   };
 
-
   const FieldError: React.FC<{ field: string }> = ({ field }) => {
     const err = fieldErrors[field];
     if (!err) return null;
-    return <p className="text-[11px] text-rose-400 mt-1 flex items-center gap-1" role="alert"><AlertCircle className="w-3 h-3" />{err}</p>;
+    return <p className="text-[11px] text-rose-400 mt-1 flex items-center gap-1"><AlertCircle className="w-3 h-3" />{err}</p>;
   };
 
-  // Step progress
   const steps = [
     { num: 1, label: 'Account' },
-    { num: 2, label: 'Verify' },
-    { num: 3, label: 'Storage' },
-    { num: 4, label: 'Done' },
+    { num: 2, label: 'Storage' },
+    { num: 3, label: 'Done' },
   ];
 
   return (
@@ -345,29 +211,26 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
             transition={{ duration: shouldReduceMotion ? 0 : 0.3, ease: 'easeOut' }}
             className="max-w-lg w-full bg-[#0A0E17] border border-white/[0.06] rounded-2xl shadow-2xl shadow-black/60 relative my-8"
           >
-            {/* Close button */}
-            <button onClick={onClose} className="absolute top-4 right-4 p-2 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors z-10" aria-label="Close">
+            <button onClick={onClose} className="absolute top-4 right-4 p-2 rounded-full bg-white/5 hover:bg-white/10 text-slate-400 hover:text-white transition-colors z-10">
               <X className="w-4 h-4" />
             </button>
 
-            {/* Header */}
             <div className="px-6 sm:px-8 pt-6 sm:pt-8 pb-4 border-b border-white/5">
               <div className="flex items-center gap-2 mb-3">
                 <img src="/SENSA_1.png" alt="SENSA" className="w-6 h-6 object-contain" />
                 <span className="text-xs font-mono text-sky-400 tracking-wider">SENSA SECURE ACCESS</span>
               </div>
               <h2 className="text-xl font-bold text-white">
-                {step === 4 ? 'Account Created!' : isGoogleFlow ? 'Complete Your Account' : 'Create your SENSA account'}
+                {step === 3 ? 'Account Created!' : isGoogleFlow ? 'Complete Your Account' : 'Create your SENSA account'}
               </h2>
-              {step !== 4 && (
+              {step !== 3 && (
                 <p className="text-sm text-slate-400 mt-1">
                   {isGoogleFlow ? 'Complete your profile to get started with SENSA.' : 'Set up your AI-powered security workspace.'}
                 </p>
               )}
             </div>
 
-            {/* Step indicator */}
-            {step !== 4 && (
+            {step !== 3 && (
               <div className="px-6 sm:px-8 py-3 border-b border-white/5 flex items-center gap-1">
                 {steps.map((s, i) => (
                   <React.Fragment key={s.num}>
@@ -389,7 +252,6 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
               </div>
             )}
 
-            {/* Error banner */}
             {errorMsg && (
               <div className="mx-6 sm:mx-8 mt-4 p-3 rounded-lg bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-start gap-2">
                 <AlertCircle className="w-4 h-4 shrink-0 mt-0.5" />
@@ -398,10 +260,8 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
             )}
 
             <div className="px-6 sm:px-8 py-5">
-              {/* ============ STEP 1: ACCOUNT INFO ============ */}
               {step === 1 && (
                 <form onSubmit={handleStep1Submit} className="space-y-4" noValidate>
-                  {/* Google sign-up */}
                   {!isGoogleFlow && (
                     <>
                       <button
@@ -429,7 +289,6 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
                     </>
                   )}
 
-                  {/* Name */}
                   <div>
                     <label htmlFor="signup-name" className="text-xs font-medium text-slate-300 mb-1.5 block">Full Name</label>
                     <input id="signup-name" type="text" value={fullName} onChange={e => { setFullName(e.target.value); setFieldErrors(p => ({...p, fullName: ''})); }}
@@ -437,7 +296,6 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
                     <FieldError field="fullName" />
                   </div>
 
-                  {/* Email */}
                   <div>
                     <label htmlFor="signup-email" className="text-xs font-medium text-slate-300 mb-1.5 block">Email Address</label>
                     <input id="signup-email" type="email" value={email} readOnly={isGoogleFlow}
@@ -447,7 +305,6 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
                     <FieldError field="email" />
                   </div>
 
-                  {/* Password (non-Google only) */}
                   {!isGoogleFlow && (
                     <>
                       <div>
@@ -458,32 +315,11 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
                             placeholder="Minimum 8 characters"
                             className="w-full bg-[#030303] border border-white/10 rounded-lg pl-3.5 pr-10 py-2.5 text-sm text-white placeholder:text-slate-600 outline-none focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/30 transition-all" />
                           <button type="button" onClick={() => setShowPassword(!showPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300" aria-label={showPassword ? 'Hide password' : 'Show password'}>
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
                             {showPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                           </button>
                         </div>
                         <FieldError field="password" />
-                        {/* Password strength */}
-                        {password.length > 0 && (
-                          <div className="mt-2 space-y-1.5">
-                            <div className="flex items-center gap-2">
-                              <div className="flex-1 h-1 rounded-full bg-slate-800 overflow-hidden">
-                                <div className={`h-full rounded-full transition-all duration-300 ${pwStrength.color}`} style={{ width: `${(pwStrength.score / 5) * 100}%` }} />
-                              </div>
-                              <span className={`text-[10px] font-mono ${pwStrength.score >= 4 ? 'text-emerald-400' : pwStrength.score >= 3 ? 'text-amber-400' : 'text-rose-400'}`}>
-                                {pwStrength.label}
-                              </span>
-                            </div>
-                            <div className="grid grid-cols-2 gap-x-2 gap-y-0.5">
-                              {pwStrength.checks.map(c => (
-                                <span key={c.label} className={`text-[10px] flex items-center gap-1 ${c.met ? 'text-emerald-400' : 'text-slate-600'}`}>
-                                  {c.met ? <Check className="w-2.5 h-2.5" /> : <span className="w-2.5 h-2.5 rounded-full border border-slate-700 inline-block" />}
-                                  {c.label}
-                                </span>
-                              ))}
-                            </div>
-                          </div>
-                        )}
                       </div>
 
                       <div>
@@ -494,7 +330,7 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
                             placeholder="Re-enter your password"
                             className="w-full bg-[#030303] border border-white/10 rounded-lg pl-3.5 pr-10 py-2.5 text-sm text-white placeholder:text-slate-600 outline-none focus:border-sky-500/50 focus:ring-1 focus:ring-sky-500/30 transition-all" />
                           <button type="button" onClick={() => setShowConfirmPassword(!showConfirmPassword)}
-                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300" aria-label={showConfirmPassword ? 'Hide' : 'Show'}>
+                            className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-500 hover:text-slate-300">
                             {showConfirmPassword ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
                           </button>
                         </div>
@@ -503,92 +339,26 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
                     </>
                   )}
 
-                  {/* Phone */}
-                  <div>
-                    <label htmlFor="phone-input" className="text-xs font-medium text-slate-300 mb-1.5 block">Mobile Number</label>
-                    <PhoneInput value={phoneData} onChange={v => { setPhoneData(v); setFieldErrors(p => ({...p, phone: ''})); }} />
-                    <p className="text-[10px] text-slate-500 mt-1">Used for account verification and real-time security alerts.</p>
-                    <FieldError field="phone" />
-                  </div>
-
-                  {/* Legal */}
                   <div className="pt-1 space-y-2">
                     <label className="flex items-start gap-2.5 cursor-pointer group">
                       <input type="checkbox" checked={legalAccepted} onChange={e => { setLegalAccepted(e.target.checked); setFieldErrors(p => ({...p, legal: ''})); }}
                         className="mt-0.5 w-4 h-4 rounded border-slate-700 bg-slate-950 accent-sky-500 shrink-0" />
                       <span className="text-xs text-slate-300 leading-relaxed">
-                        I agree to the SENSA{' '}
-                        <button type="button" onClick={() => onOpenLegal('terms')} className="text-sky-400 hover:underline">Terms of Service</button>{' '}and{' '}
-                        <button type="button" onClick={() => onOpenLegal('privacy')} className="text-sky-400 hover:underline">Privacy Policy</button>.
+                        I agree to the SENSA <button type="button" onClick={() => onOpenLegal('terms')} className="text-sky-400 hover:underline">Terms of Service</button> and <button type="button" onClick={() => onOpenLegal('privacy')} className="text-sky-400 hover:underline">Privacy Policy</button>.
                       </span>
                     </label>
                     <FieldError field="legal" />
-
-                    <label className="flex items-start gap-2.5 cursor-pointer group">
-                      <input type="checkbox" checked={marketingConsent} onChange={e => setMarketingConsent(e.target.checked)}
-                        className="mt-0.5 w-4 h-4 rounded border-slate-700 bg-slate-950 accent-sky-500 shrink-0" />
-                      <span className="text-xs text-slate-400 leading-relaxed">
-                        I'd like to receive product updates and security notices from SENSA.
-                      </span>
-                    </label>
                   </div>
 
-                  {/* Submit */}
                   <button type="submit" disabled={loading}
-                    className="w-full bg-sky-500 hover:bg-sky-400 disabled:bg-slate-800 disabled:text-slate-500 text-[#030303] font-semibold py-2.5 rounded-lg text-sm flex items-center justify-center gap-2 transition-all shadow-lg shadow-sky-500/20 disabled:shadow-none mt-2">
+                    className="w-full bg-sky-500 hover:bg-sky-400 disabled:bg-slate-800 disabled:text-slate-500 text-[#030303] font-semibold py-2.5 rounded-lg text-sm flex items-center justify-center gap-2 transition-all mt-2">
                     {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
-                    <span>{loading ? 'Sending verification code...' : 'Continue'}</span>
+                    <span>{loading ? 'Checking...' : 'Continue'}</span>
                   </button>
                 </form>
               )}
 
-              {/* ============ STEP 2: OTP VERIFY ============ */}
               {step === 2 && (
-                <form onSubmit={handleVerifyOtp} className="space-y-5">
-                  <div className="text-center space-y-2">
-                    <div className="w-12 h-12 rounded-full bg-sky-500/10 border border-sky-500/20 flex items-center justify-center mx-auto">
-                      <Shield className="w-6 h-6 text-sky-400" />
-                    </div>
-                    <p className="text-sm font-medium text-white">Verify your mobile number</p>
-                    <p className="text-xs text-slate-400">
-                      We sent a 6-digit code to{' '}
-                      <span className="text-sky-400 font-mono font-medium">
-                        {phoneData.country_code} {phoneData.phone_number.substring(0, 2)}{'•'.repeat(Math.max(0, phoneData.phone_number.length - 4))}{phoneData.phone_number.slice(-2)}
-                      </span>
-                    </p>
-                  </div>
-
-                  <div className="flex justify-center gap-2 sm:gap-3">
-                    {otp.map((digit, i) => (
-                      <input key={i} id={`otp-input-${i}`} type="text" inputMode="numeric" maxLength={1}
-                        value={digit} onChange={e => handleOtpInput(e.target.value, i)}
-                        onPaste={i === 0 ? handleOtpPaste : undefined} onKeyDown={e => handleOtpKeyDown(e, i)}
-                        className="w-10 h-12 sm:w-11 sm:h-13 text-center bg-[#030303] border border-white/10 text-sky-400 text-lg font-bold font-mono rounded-lg outline-none focus:border-sky-500 focus:ring-1 focus:ring-sky-500/30 transition-all"
-                        aria-label={`Digit ${i + 1}`} />
-                    ))}
-                  </div>
-
-                  <button type="submit" disabled={loading || otp.join('').length < 6}
-                    className="w-full bg-sky-500 hover:bg-sky-400 disabled:bg-slate-800 disabled:text-slate-500 text-[#030303] font-semibold py-2.5 rounded-lg text-sm flex items-center justify-center gap-2 transition-all shadow-lg shadow-sky-500/20 disabled:shadow-none">
-                    {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <CheckCircle2 className="w-4 h-4" />}
-                    <span>{loading ? 'Verifying...' : 'Verify Code'}</span>
-                  </button>
-
-                  <div className="text-center space-y-2">
-                    <button type="button" disabled={!canResend || loading} onClick={handleResendOtp}
-                      className="text-xs font-mono text-slate-400 hover:text-sky-400 disabled:opacity-50 transition-colors">
-                      {canResend ? 'Resend Code' : `Resend in ${timerSeconds}s`}
-                    </button>
-                    <button type="button" onClick={() => { setStep(1); setOtp(['','','','','','']); setErrorMsg(''); }}
-                      className="block w-full text-xs text-slate-500 hover:text-slate-300 transition-colors">
-                      <ArrowLeft className="w-3 h-3 inline mr-1" />Change number
-                    </button>
-                  </div>
-                </form>
-              )}
-
-              {/* ============ STEP 3: STORAGE MODE ============ */}
-              {step === 3 && (
                 <form onSubmit={handleCompleteProfile} className="space-y-5">
                   <div className="space-y-1.5">
                     <label className="text-xs font-medium text-slate-300 block">Data Storage Mode</label>
@@ -614,24 +384,15 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
                     </div>
                   </div>
 
-                  <div className="p-3 bg-white/[0.02] rounded-lg border border-white/5 flex gap-2 text-[10px] text-slate-400 leading-relaxed">
-                    <Info className="w-4 h-4 text-sky-400 shrink-0 mt-0.5" />
-                    <span>
-                      Customers are responsible for ensuring camera deployment and monitoring comply with applicable laws.{' '}
-                      <button type="button" onClick={() => onOpenLegal('cctvNotice')} className="text-sky-400 hover:underline">CCTV Notice</button>
-                    </span>
-                  </div>
-
                   <button type="submit" disabled={loading}
-                    className="w-full bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 disabled:from-slate-800 disabled:to-slate-800 disabled:text-slate-500 text-white font-semibold py-2.5 rounded-lg text-sm flex items-center justify-center gap-2 transition-all shadow-lg shadow-sky-500/20 disabled:shadow-none">
+                    className="w-full bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 disabled:from-slate-800 disabled:to-slate-800 disabled:text-slate-500 text-white font-semibold py-2.5 rounded-lg text-sm flex items-center justify-center gap-2 transition-all">
                     {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
                     <span>{loading ? 'Creating Account...' : 'Create Account'}</span>
                   </button>
                 </form>
               )}
 
-              {/* ============ STEP 4: SUCCESS ============ */}
-              {step === 4 && (
+              {step === 3 && (
                 <div className="text-center py-6 space-y-4">
                   <motion.div
                     initial={{ scale: shouldReduceMotion ? 1 : 0 }} animate={{ scale: 1 }}
@@ -649,7 +410,6 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
               )}
             </div>
 
-            {/* Footer */}
             {step === 1 && !isGoogleFlow && (
               <div className="px-6 sm:px-8 pb-6 pt-2 border-t border-white/5 text-center">
                 <p className="text-sm text-slate-400">

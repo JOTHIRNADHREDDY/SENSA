@@ -29,8 +29,10 @@ export async function generateAndSendOtp(phone: string, env: any): Promise<{ suc
     }
   }
 
-  // Generate 6-digit OTP
-  const otp = Math.floor(100000 + Math.random() * 900000).toString();
+  // Generate 6-digit OTP using cryptographically secure random
+  const randomBytes = new Uint32Array(1);
+  crypto.getRandomValues(randomBytes);
+  const otp = (randomBytes[0] % 900000 + 100000).toString();
   const hashedOtp = await hashOtp(otp);
 
   const nowIso = new Date().toISOString();
@@ -40,7 +42,7 @@ export async function generateAndSendOtp(phone: string, env: any): Promise<{ suc
       phone: { stringValue: sanitizedPhone },
       hash: { stringValue: hashedOtp },
       lastSent: { timestampValue: nowIso },
-      expiresAt: { timestampValue: new Date(Date.now() + 10 * 60 * 1000).toISOString() }, // 10 mins
+      expiresAt: { timestampValue: new Date(Date.now() + 5 * 60 * 1000).toISOString() }, // 5 mins
       attempts: { integerValue: "0" }
     }
   };

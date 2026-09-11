@@ -123,10 +123,12 @@ export async function handleOrganizations(request: Request, env: any) {
         
         // In a real system, you'd trigger a background job to delete all related data (sites, cameras, etc.)
         // For REST, you would delete the doc. We simulate the REST DELETE call via fetch.
+        const { getFirestoreAccessToken } = await import("../../utils/google-auth");
+        const accessToken = await getFirestoreAccessToken(env);
         const url = `https://firestore.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents/organizations/${orgId}`;
         await fetch(url, {
           method: "DELETE",
-          headers: { "Authorization": `Bearer ${env.FIREBASE_SERVICE_ACCOUNT_TOKEN}` }
+          headers: { "Authorization": `Bearer ${accessToken}` }
         });
         
         return new Response(JSON.stringify({ success: true }), { status: 200, headers: { "Content-Type": "application/json" } });

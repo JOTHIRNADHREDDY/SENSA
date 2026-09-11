@@ -99,10 +99,12 @@ export async function handleMemberships(request: Request, env: any) {
             return new Response(JSON.stringify({ error: "Cannot remove owner" }), { status: 403, headers: { "Content-Type": "application/json" } });
         }
 
+        const { getFirestoreAccessToken } = await import("../../utils/google-auth");
+        const accessToken = await getFirestoreAccessToken(env);
         const deleteUrl = `https://firestore.googleapis.com/v1/projects/${env.FIREBASE_PROJECT_ID}/databases/(default)/documents/memberships/${memId}`;
         await fetch(deleteUrl, {
           method: "DELETE",
-          headers: { "Authorization": `Bearer ${env.FIREBASE_SERVICE_ACCOUNT_TOKEN}` }
+          headers: { "Authorization": `Bearer ${accessToken}` }
         });
         
         return new Response(JSON.stringify({ success: true }), { status: 200, headers: { "Content-Type": "application/json" } });

@@ -10,6 +10,7 @@ import { CameraManager } from './components/CameraManager';
 import { PricingSection } from './components/PricingSection';
 import { TechSpecsAndFaq } from './components/TechSpecsAndFaq';
 import { SignupModal } from './components/SignupModal';
+import { BookDemoModal } from './components/BookDemoModal';
 import { ContactSalesModal } from './components/ContactSalesModal';
 import { CompatibilityModal } from './components/CompatibilityModal';
 import { LegalModal } from './components/LegalModal';
@@ -31,6 +32,7 @@ export default function App() {
   const [alerts, setAlerts] = useState<SecurityAlert[]>([]);
   const [zones, setZones] = useState<PolygonZone[]>([]);
   const [isTrialModalOpen, setIsTrialModalOpen] = useState<boolean>(false);
+  const [isBookDemoModalOpen, setIsBookDemoModalOpen] = useState<boolean>(false);
   const [isContactSalesModalOpen, setIsContactSalesModalOpen] = useState<boolean>(false);
   const [isCompatibilityModalOpen, setIsCompatibilityModalOpen] = useState<boolean>(false);
   const [legalModalType, setLegalModalType] = useState<'terms' | 'privacy' | null>(null);
@@ -322,7 +324,7 @@ export default function App() {
       <Navbar
         activeTab={activeTab}
         setActiveTab={setActiveTab}
-        onOpenTrialModal={() => setIsTrialModalOpen(true)}
+        onOpenTrialModal={() => setIsBookDemoModalOpen(true)}
         activeAlertCount={activeAlertCount}
       />
       {user && activeTab !== 'hero' && activeTab !== 'login' && (
@@ -361,7 +363,7 @@ export default function App() {
           <div className="w-full flex flex-col">
             <div id="how-it-works">
               <HeroSection
-                onOpenTrial={() => setIsTrialModalOpen(true)}
+                onOpenTrial={() => setIsBookDemoModalOpen(true)}
                 onOpenCompatibility={() => setIsCompatibilityModalOpen(true)}
                 onOpenDashboard={() => setActiveTab('dashboard')}
                 onOpenInspector={() => setActiveTab('inspector')}
@@ -371,7 +373,7 @@ export default function App() {
               <PricingSection
                 onSelectPlan={async (planName) => {
                   if (planName === 'Pilot') {
-                    setIsTrialModalOpen(true);
+                    setIsBookDemoModalOpen(true);
                   } else if (planName === 'Business' || planName === 'Enterprise') {
                     setIsContactSalesModalOpen(true);
                   } else {
@@ -548,6 +550,13 @@ export default function App() {
         onSwitchToLogin={() => { setIsTrialModalOpen(false); setGooglePrefill(null); setActiveTab('login'); }}
       />
 
+      <BookDemoModal
+        isOpen={isBookDemoModalOpen}
+        onClose={() => setIsBookDemoModalOpen(false)}
+        onOpenLegal={(type) => setLegalModalType(type as any)}
+        onSignIn={() => { setIsBookDemoModalOpen(false); setActiveTab('login'); }}
+      />
+
       <ContactSalesModal
         isOpen={isContactSalesModalOpen}
         onClose={() => setIsContactSalesModalOpen(false)}
@@ -560,7 +569,7 @@ export default function App() {
         onClose={() => setIsCompatibilityModalOpen(false)}
         onBookDemo={() => {
           setIsCompatibilityModalOpen(false);
-          setIsContactSalesModalOpen(true);
+          setIsBookDemoModalOpen(true);
         }}
         onTalkToSales={() => {
           setIsCompatibilityModalOpen(false);

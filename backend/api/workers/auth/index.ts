@@ -22,132 +22,124 @@ export async function handleAuth(request: Request, env: any) {
   const path = url.pathname;
   const user = (request as any).user;
 
-  // POST /api/v1/auth/check — Check if email/phone exists
+  // POST /api/v1/auth/check — Check if email exists
   if (path === "/api/v1/auth/check" && request.method === "POST") {
     try {
-      const { email, phone } = await request.json() as any;
+      const { email } = await request.json() as any;
       let emailExists = false;
-      let phoneExists = false;
 
       if (email) {
-        const u = await findUserByField(env, "email", email.toLowerCase());
+        const u = await findUserByField(env, "email", email.toLowerCase().trim());
         if (u) emailExists = true;
       }
-      if (phone) {
-        const sanitizedPhone = phone.replace(/[^0-9+]/g, "");
-        const u = await findUserByField(env, "phone", sanitizedPhone);
-        if (u) phoneExists = true;
-      }
-      return new Response(JSON.stringify({ exists: emailExists || phoneExists, emailExists, phoneExists }), { status: 200, headers: { "Content-Type": "application/json" } });
+      return new Response(JSON.stringify({ exists: emailExists, emailExists }), { status: 200, headers: { "Content-Type": "application/json" } });
     } catch (e: any) {
       return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { "Content-Type": "application/json" } });
     }
   }
 
-  // POST /api/v1/auth/send-otp
+  // POST /api/v1/auth/send-otp — Used by demo flow
   if (path === "/api/v1/auth/send-otp" && request.method === "POST") {
     try {
       const { phone } = await request.json() as any;
-      if (!phone) return new Response(JSON.stringify({ error: "Phone number required" }), { status: 400 });
+      if (!phone) return new Response(JSON.stringify({ error: "Phone number required" }), { status: 400, headers: { "Content-Type": "application/json" } });
       const result = await generateAndSendOtp(phone, env);
-      if (!result.success) return new Response(JSON.stringify({ error: result.error }), { status: 429 });
+      if (!result.success) return new Response(JSON.stringify({ error: result.error }), { status: 429, headers: { "Content-Type": "application/json" } });
       return new Response(JSON.stringify({ success: true }), { status: 200, headers: { "Content-Type": "application/json" } });
     } catch (e: any) {
       return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { "Content-Type": "application/json" } });
     }
   }
 
-  // POST /api/v1/auth/verify-otp
+  // POST /api/v1/auth/verify-otp — Used by demo flow
   if (path === "/api/v1/auth/verify-otp" && request.method === "POST") {
     try {
       const { phone, otp } = await request.json() as any;
-      if (!phone || !otp) return new Response(JSON.stringify({ error: "Phone and OTP required" }), { status: 400 });
+      if (!phone || !otp) return new Response(JSON.stringify({ error: "Phone and OTP required" }), { status: 400, headers: { "Content-Type": "application/json" } });
       
       const result = await verifyOtpAndGetToken(phone, otp, env);
       if (!result.success) return new Response(JSON.stringify({ error: result.error }), { status: 400, headers: { "Content-Type": "application/json" } });
       
-      // Check if user already exists to log them in directly
-      const sanitizedPhone = phone.replace(/[^0-9+]/g, "");
-      const existingUser = await findUserByField(env, "phone", sanitizedPhone);
-      let firebaseToken = null;
-      let isNewUser = true;
-
-      if (existingUser) {
-        isNewUser = false;
-        const uid = existingUser.fields?.uid?.stringValue || existingUser.name.split("/").pop();
-        firebaseToken = await createFirebaseCustomToken(uid, env);
-      }
-
       return new Response(JSON.stringify({ 
         success: true, 
-        verificationToken: result.token, 
-        firebaseToken,
-        isNewUser 
+        verificationToken: result.token
       }), { status: 200, headers: { "Content-Type": "application/json" } });
     } catch (e: any) {
       return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { "Content-Type": "application/json" } });
     }
   }
 
-  // POST /api/v1/auth/register
+  // POST /api/v1/auth/register — Email/password signup (NO phone required)
   if (path === "/api/v1/auth/register" && request.method === "POST") {
     try {
-      const { verificationToken, email, password, displayName, firebaseApiKey } = await request.json() as any;
-      if (!verificationToken) return new Response(JSON.stringify({ error: "Verification token required" }), { status: 400 });
+      const { email, password, displayName, firebaseApiKey } = await request.json() as any;
+      if (!email || !password) return new Response(JSON.stringify({ error: "Email and password are required" }), { status: 400, headers: { "Content-Type": "application/json" } });
 
-      // Verify the token (valid for 15 mins)
-      const payload = await verifyVerificationToken(verificationToken, env);
-      const sanitizedPhone = payload.phone;
+      const normalizedEmail = email.toLowerCase().trim();
 
-      // Re-check uniqueness
-      const existingPhone = await findUserByField(env, "phone", sanitizedPhone);
-      if (existingPhone) return new Response(JSON.stringify({ error: "Phone number already registered" }), { status: 409 });
-      
-      if (email) {
-        const existingEmail = await findUserByField(env, "email", email.toLowerCase());
-        if (existingEmail) return new Response(JSON.stringify({ error: "Email already registered" }), { status: 409 });
-      }
+      // Check email uniqueness
+      const existingEmail = await findUserByField(env, "email", normalizedEmail);
+      if (existingEmail) return new Response(JSON.stringify({ error: "Email is already in use." }), { status: 409, headers: { "Content-Type": "application/json" } });
 
       let uid = crypto.randomUUID();
 
-      // If email, password, and firebaseApiKey are provided, create user in Firebase Auth via REST API
-      if (email && password && firebaseApiKey) {
+      // Create user in Firebase Auth via REST API
+      if (firebaseApiKey) {
         const signUpUrl = `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${firebaseApiKey}`;
         const signUpRes = await fetch(signUpUrl, {
           method: "POST",
           headers: { "Content-Type": "application/json" },
-          body: JSON.stringify({ email, password, returnSecureToken: true })
+          body: JSON.stringify({ email: normalizedEmail, password, returnSecureToken: true })
         });
         
         const signUpData = await signUpRes.json() as any;
         if (!signUpRes.ok) {
-          // If the email is already in Firebase Auth, but not in our DB, we can just login?
-          // For simplicity, return the Firebase error
-          if (signUpData.error && signUpData.error.message === "EMAIL_EXISTS") {
-             // Edge case: orphaned auth record. We can just use it if we can authenticate.
-             // But we don't have a way to force-link without Admin SDK.
-             return new Response(JSON.stringify({ error: "Email already in use in auth provider. Please log in with Google or reset your password." }), { status: 409 });
+          if (signUpData.error?.message === "EMAIL_EXISTS") {
+            return new Response(JSON.stringify({ error: "Email is already in use." }), { status: 409, headers: { "Content-Type": "application/json" } });
           }
-          return new Response(JSON.stringify({ error: signUpData.error?.message || "Failed to create Firebase Auth user" }), { status: 400 });
+          return new Response(JSON.stringify({ error: signUpData.error?.message || "Failed to create account" }), { status: 400, headers: { "Content-Type": "application/json" } });
         }
-        
         uid = signUpData.localId;
       }
 
       const profileDoc = {
         fields: {
           uid: { stringValue: uid },
-          email: { stringValue: email ? email.toLowerCase() : "" },
+          email: { stringValue: normalizedEmail },
           displayName: { stringValue: displayName || "" },
-          phone: { stringValue: sanitizedPhone },
           storageMode: { stringValue: "hybrid" },
-          provider: { stringValue: "phone" },
+          provider: { stringValue: "password" },
           createdAt: { timestampValue: new Date().toISOString() },
           updatedAt: { timestampValue: new Date().toISOString() },
         }
       };
 
       await firestoreCreate(env, "users", uid, profileDoc);
+
+      // Auto-create default organization
+      const orgId = crypto.randomUUID();
+      const orgDoc = {
+        fields: {
+          id: { stringValue: orgId },
+          name: { stringValue: `${displayName || "My"}'s Organization` },
+          ownerId: { stringValue: uid },
+          createdAt: { timestampValue: new Date().toISOString() }
+        }
+      };
+      await firestoreCreate(env, "organizations", orgId, orgDoc);
+
+      // Create membership
+      const membershipId = `${uid}_${orgId}`;
+      const membershipDoc = {
+        fields: {
+          id: { stringValue: membershipId },
+          userId: { stringValue: uid },
+          organizationId: { stringValue: orgId },
+          role: { stringValue: "owner" },
+          createdAt: { timestampValue: new Date().toISOString() }
+        }
+      };
+      await firestoreCreate(env, "memberships", membershipId, membershipDoc);
 
       const firebaseToken = await createFirebaseCustomToken(uid, env);
       
@@ -157,25 +149,25 @@ export async function handleAuth(request: Request, env: any) {
     }
   }
 
-  // POST /api/v1/auth/link-google
+  // POST /api/v1/auth/link-google — Google signup profile creation (NO phone required)
   if (path === "/api/v1/auth/link-google" && request.method === "POST") {
     try {
-      // Used when Google Sign-in requires phone verification for new accounts
-      const { verificationToken, uid, email, displayName, photoURL } = await request.json() as any;
-      if (!verificationToken || !uid) return new Response(JSON.stringify({ error: "Missing required fields" }), { status: 400 });
+      const { uid, email, displayName, photoURL } = await request.json() as any;
+      if (!uid) return new Response(JSON.stringify({ error: "Missing uid" }), { status: 400, headers: { "Content-Type": "application/json" } });
 
-      const payload = await verifyVerificationToken(verificationToken, env);
-      const sanitizedPhone = payload.phone;
+      const normalizedEmail = (email || "").toLowerCase().trim();
 
-      const existingPhone = await findUserByField(env, "phone", sanitizedPhone);
-      if (existingPhone) return new Response(JSON.stringify({ error: "Phone number already registered to another account" }), { status: 409 });
+      // Check if profile already exists
+      const existingProfile = await firestoreGet(env, "users", uid);
+      if (existingProfile && existingProfile.fields) {
+        return new Response(JSON.stringify({ success: true, existing: true }), { status: 200, headers: { "Content-Type": "application/json" } });
+      }
 
       const profileDoc = {
         fields: {
           uid: { stringValue: uid },
-          email: { stringValue: email || "" },
+          email: { stringValue: normalizedEmail },
           displayName: { stringValue: displayName || "" },
-          phone: { stringValue: sanitizedPhone },
           photoURL: { stringValue: photoURL || "" },
           storageMode: { stringValue: "hybrid" },
           provider: { stringValue: "google" },
@@ -185,6 +177,30 @@ export async function handleAuth(request: Request, env: any) {
       };
 
       await firestoreCreate(env, "users", uid, profileDoc);
+
+      // Auto-create default organization
+      const orgId = crypto.randomUUID();
+      const orgDoc = {
+        fields: {
+          id: { stringValue: orgId },
+          name: { stringValue: `${displayName || "My"}'s Organization` },
+          ownerId: { stringValue: uid },
+          createdAt: { timestampValue: new Date().toISOString() }
+        }
+      };
+      await firestoreCreate(env, "organizations", orgId, orgDoc);
+
+      const membershipId = `${uid}_${orgId}`;
+      const membershipDoc = {
+        fields: {
+          id: { stringValue: membershipId },
+          userId: { stringValue: uid },
+          organizationId: { stringValue: orgId },
+          role: { stringValue: "owner" },
+          createdAt: { timestampValue: new Date().toISOString() }
+        }
+      };
+      await firestoreCreate(env, "memberships", membershipId, membershipDoc);
 
       return new Response(JSON.stringify({ success: true }), { status: 201, headers: { "Content-Type": "application/json" } });
     } catch (e: any) {
@@ -241,10 +257,6 @@ export async function handleAuth(request: Request, env: any) {
           updateDoc.fields.displayName = { stringValue: body.displayName };
           updateMask.push("displayName");
         }
-        if (body.phone) {
-          updateDoc.fields.phone = { stringValue: body.phone };
-          updateMask.push("phone");
-        }
         if (body.storageMode) {
           updateDoc.fields.storageMode = { stringValue: body.storageMode };
           updateMask.push("storageMode");
@@ -261,20 +273,15 @@ export async function handleAuth(request: Request, env: any) {
         });
       }
 
-      // Create new profile — derive identity from verified JWT, not frontend fields
+      // Create new profile
       const profileDoc = {
         fields: {
           uid: { stringValue: user.uid },
           email: { stringValue: user.email || body.email || "" },
           displayName: { stringValue: body.displayName || "" },
-          phone: { stringValue: body.phone || "" },
           photoURL: { stringValue: body.photoURL || "" },
           storageMode: { stringValue: body.storageMode || "hybrid" },
           provider: { stringValue: body.provider || "password" },
-          legalAccepted: { booleanValue: body.legalAccepted === true },
-          termsVersion: { stringValue: body.termsVersion || "" },
-          privacyVersion: { stringValue: body.privacyVersion || "" },
-          marketingConsent: { booleanValue: body.marketingConsent === true },
           createdAt: { timestampValue: new Date().toISOString() },
           updatedAt: { timestampValue: new Date().toISOString() },
         }

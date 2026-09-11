@@ -21,6 +21,8 @@ env/
 # Firebase
 .firebase/
 firebase-debug.log
+*-firebase-adminsdk-*.json
+serviceAccountKey.json
 
 # Cloudflare
 .wrangler/

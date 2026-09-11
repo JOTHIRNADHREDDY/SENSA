@@ -347,11 +347,11 @@ export const LoginPage: React.FC<LoginPageProps> = ({ onBackToApp, onOpenLegal, 
                         });
                         const data = await res.json();
                         
-                        if (data.exists && data.profile?.fields?.phone?.stringValue) {
-                          // Existing user with verified phone — go to dashboard
+                        if (data.exists) {
+                          // Existing user — go to dashboard
                           onBackToApp();
                         } else {
-                          // No profile or no phone — force phone verification via signup modal
+                          // No profile — go to signup modal to complete account
                           if (onGoogleNewUser) {
                             onGoogleNewUser({
                               uid: result.user.uid,

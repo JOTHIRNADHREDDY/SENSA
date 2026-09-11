@@ -9,6 +9,7 @@ import { handleCameras } from "../cameras";
 import { handleAlerts } from "../alerts";
 import { handleTelemetry } from "../telemetry";
 import { handleWebhooks } from "../webhooks";
+import { handleDemo } from "../demo";
 
 // Allowed origins for CORS
 const ALLOWED_ORIGINS = [
@@ -118,6 +119,7 @@ export default {
       else if (path.startsWith("/api/v1/cameras")) response = await handleCameras(ctxRequest, env);
       else if (path.startsWith("/api/v1/alerts")) response = await handleAlerts(ctxRequest, env);
       else if (path.startsWith("/api/v1/telemetry")) response = await handleTelemetry(ctxRequest, env);
+      else if (path.startsWith("/api/v1/demo")) response = await handleDemo(ctxRequest, env);
       else response = new Response(JSON.stringify({ error: "Not Found" }), { status: 404, headers: { "Content-Type": "application/json" } });
 
       return withCors(response, corsHeaders);
