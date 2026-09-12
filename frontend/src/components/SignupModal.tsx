@@ -35,7 +35,7 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
   const [errorMsg, setErrorMsg] = useState('');
   const [fieldErrors, setFieldErrors] = useState<Record<string, string>>({});
 
-  const API_BASE_URL = import.meta.env.VITE_API_BASE_URL || '';
+  const API_BASE_URL = (import.meta.env.VITE_API_BASE_URL || '').replace(/\/$/, '');
   const isGoogleFlow = !!googlePrefill;
 
   useEffect(() => {
@@ -80,53 +80,6 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
 
     try {
       if (!isGoogleFlow) {
-        const checkRes = await fetch(`${API_BASE_URL}/api/v1/auth/check`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ email: email.toLowerCase().trim() })
-        });
-        const checkData = await checkRes.json();
-        if (checkData.exists || checkData.emailExists) {
-          setErrorMsg('Email is already in use. Please sign in instead.');
-          setLoading(false);
-          return;
-        }
-      }
-      setStep(2);
-    } catch (error: any) {
-      setErrorMsg(error.message || 'Network error. Please try again.');
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  const handleCompleteProfile = async (e: React.FormEvent) => {
-    e.preventDefault();
-    if (loading) return;
-    setErrorMsg('');
-    setLoading(true);
-    
-    try {
-      if (isGoogleFlow) {
-        const res = await fetch(`${API_BASE_URL}/api/v1/auth/link-google`, {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({
-            uid: googlePrefill?.uid,
-            email,
-            displayName: fullName,
-            photoURL: googlePrefill?.photoURL,
-          })
-        });
-        const data = await res.json();
-        if (!res.ok) throw new Error(data.error || 'Failed to create account');
-        
-        setStep(3);
-        setTimeout(() => {
-          onCompleteSignup('', storageMode);
-          onClose();
-        }, 2000);
-      } else {
         const res = await fetch(`${API_BASE_URL}/api/v1/auth/register`, {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -141,15 +94,28 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
         if (!res.ok) throw new Error(data.error || 'Failed to create account');
 
         await loginWithCustomToken(data.firebaseToken);
-        
-        setStep(3);
-        setTimeout(() => {
-          onCompleteSignup('', storageMode);
-          onClose();
-        }, 2000);
+      } else {
+        const res = await fetch(`${API_BASE_URL}/api/v1/auth/link-google`, {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({
+            uid: googlePrefill?.uid,
+            email,
+            displayName: fullName,
+            photoURL: googlePrefill?.photoURL,
+          })
+        });
+        const data = await res.json();
+        if (!res.ok) throw new Error(data.error || 'Failed to create account');
       }
+
+      setStep(3);
+      setTimeout(() => {
+        onCompleteSignup('', storageMode);
+        onClose();
+      }, 2000);
     } catch (error: any) {
-      setErrorMsg(error.message || 'Failed to complete registration. Please try again.');
+      setErrorMsg(error.message || 'Network error. Please try again.');
     } finally {
       setLoading(false);
     }
@@ -192,7 +158,6 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
 
   const steps = [
     { num: 1, label: 'Account' },
-    { num: 2, label: 'Storage' },
     { num: 3, label: 'Done' },
   ];
 
@@ -352,45 +317,12 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
 
                   <button type="submit" disabled={loading}
                     className="w-full bg-sky-500 hover:bg-sky-400 disabled:bg-slate-800 disabled:text-slate-500 text-[#030303] font-semibold py-2.5 rounded-lg text-sm flex items-center justify-center gap-2 transition-all mt-2">
-                    {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <ArrowRight className="w-4 h-4" />}
-                    <span>{loading ? 'Checking...' : 'Continue'}</span>
-                  </button>
-                </form>
-              )}
-
-              {step === 2 && (
-                <form onSubmit={handleCompleteProfile} className="space-y-5">
-                  <div className="space-y-1.5">
-                    <label className="text-xs font-medium text-slate-300 block">Data Storage Mode</label>
-                    <div className="grid grid-cols-3 gap-2">
-                      {([
-                        { mode: 'local' as DataStorageMode, icon: HardDrive, label: 'LOCAL' },
-                        { mode: 'hybrid' as DataStorageMode, icon: Zap, label: 'HYBRID' },
-                        { mode: 'cloud' as DataStorageMode, icon: Cloud, label: 'CLOUD' },
-                      ]).map(opt => (
-                        <button key={opt.mode} type="button" onClick={() => setStorageMode(opt.mode)}
-                          className={`p-3 rounded-lg border text-center text-xs font-mono transition-all ${
-                            storageMode === opt.mode ? 'bg-sky-500/15 border-sky-500/50 text-sky-300 font-bold' : 'bg-[#030303] border-white/10 text-slate-400 hover:border-white/20'
-                          }`}>
-                          <opt.icon className="w-4 h-4 mx-auto mb-1.5" />
-                          {opt.label}
-                        </button>
-                      ))}
-                    </div>
-                    <div className="text-[10px] text-slate-500 leading-relaxed bg-[#030303] p-2.5 rounded-lg border border-white/5">
-                      {storageMode === 'local' && "Video processing and storage in your local environment. You manage infrastructure and security."}
-                      {storageMode === 'hybrid' && "Local processing with metadata and alerts synced to SENSA cloud infrastructure."}
-                      {storageMode === 'cloud' && "Full cloud processing and storage in SENSA-managed infrastructure."}
-                    </div>
-                  </div>
-
-                  <button type="submit" disabled={loading}
-                    className="w-full bg-gradient-to-r from-sky-500 to-blue-600 hover:from-sky-400 hover:to-blue-500 disabled:from-slate-800 disabled:to-slate-800 disabled:text-slate-500 text-white font-semibold py-2.5 rounded-lg text-sm flex items-center justify-center gap-2 transition-all">
                     {loading ? <RefreshCw className="w-4 h-4 animate-spin" /> : <Zap className="w-4 h-4" />}
                     <span>{loading ? 'Creating Account...' : 'Create Account'}</span>
                   </button>
                 </form>
               )}
+
 
               {step === 3 && (
                 <div className="text-center py-6 space-y-4">
