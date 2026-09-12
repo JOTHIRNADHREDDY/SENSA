@@ -272,7 +272,7 @@ export default function App() {
       phone,
       mode,
     });
-    setActiveTab('dashboard');
+    setActiveTab('hero');
   };
 
   // Open polygon drawer for specific camera
@@ -342,22 +342,6 @@ export default function App() {
             transition={{ duration: 0.3, ease: "easeOut" }}
             className="w-full flex flex-col h-full"
           >
-        {/* User Active Trial Banner if registered */}
-        {userSession.registered && (
-          <div className="p-4 rounded-2xl bg-sky-950/40 border border-sky-500/30 flex items-center justify-between text-xs font-mono text-sky-300">
-            <div className="flex items-center gap-2">
-              <Zap className="w-4 h-4 text-sky-400 fill-current" />
-              <span>
-                Consultation Active for <strong className="text-white">{userSession.phone}</strong> • Mode:{' '}
-                <strong className="uppercase text-sky-400">{userSession.mode}</strong>
-              </span>
-            </div>
-            <span className="text-[10px] text-emerald-400 font-bold bg-emerald-500/20 px-2 py-0.5 rounded border border-emerald-500/30">
-              10 DAYS REMAINING
-            </span>
-          </div>
-        )}
-
         {/* Tab 1: Full Landing Page */}
         {activeTab === 'hero' && (
           <div className="w-full flex flex-col">

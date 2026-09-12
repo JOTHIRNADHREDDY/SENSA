@@ -334,7 +334,7 @@ export const SignupModal: React.FC<SignupModalProps> = ({ isOpen, onClose, onCom
                     <CheckCircle2 className="w-8 h-8 text-emerald-400" />
                   </motion.div>
                   <h3 className="text-lg font-bold text-white">Welcome to SENSA!</h3>
-                  <p className="text-sm text-slate-400">Your account has been created successfully. Redirecting to your dashboard...</p>
+                  <p className="text-sm text-slate-400">Your account has been created successfully. Redirecting...</p>
                   <div className="flex justify-center">
                     <RefreshCw className="w-4 h-4 text-sky-400 animate-spin" />
                   </div>
