@@ -1,6 +1,4 @@
 import { firestoreGet, firestoreCreate, firestoreUpdate, firestoreQuery } from "../../utils/firestore";
-import { generateAndSendOtp, verifyOtpAndGetToken } from "../auth/otp";
-import { verifyVerificationToken } from "../auth/jwt";
 
 /**
  * Generate a cryptographically secure demo access key.
@@ -33,97 +31,19 @@ export async function handleDemo(request: Request, env: any) {
     });
   }
 
-  // POST /api/v1/demo/send-otp — Send OTP for demo phone verification
-  if (path === "/api/v1/demo/send-otp" && request.method === "POST") {
-    try {
-      const { phone } = await request.json() as any;
-      if (!phone) {
-        return new Response(JSON.stringify({ error: "Please enter a valid mobile number." }), {
-          status: 400, headers: { "Content-Type": "application/json" }
-        });
-      }
 
-      // Normalize phone
-      const sanitizedPhone = phone.replace(/[^0-9+]/g, "");
-      if (sanitizedPhone.length < 10) {
-        return new Response(JSON.stringify({ error: "Please enter a valid mobile number." }), {
-          status: 400, headers: { "Content-Type": "application/json" }
-        });
-      }
-
-      const result = await generateAndSendOtp(sanitizedPhone, env);
-      if (!result.success) {
-        // Map internal errors to user-friendly messages
-        if (result.error?.includes("60 seconds")) {
-          return new Response(JSON.stringify({ error: "Too many verification attempts. Please try again later." }), {
-            status: 429, headers: { "Content-Type": "application/json" }
-          });
-        }
-        return new Response(JSON.stringify({ error: "Verification service is temporarily unavailable. Please try again later." }), {
-          status: 500, headers: { "Content-Type": "application/json" }
-        });
-      }
-
-      return new Response(JSON.stringify({ success: true, message: "Verification code sent" }), {
-        status: 200, headers: { "Content-Type": "application/json" }
-      });
-    } catch (e: any) {
-      console.error("Demo send-otp error:", e);
-      return new Response(JSON.stringify({ error: "Verification service is temporarily unavailable. Please try again later." }), {
-        status: 500, headers: { "Content-Type": "application/json" }
-      });
-    }
-  }
-
-  // POST /api/v1/demo/verify-otp — Verify OTP for demo
-  if (path === "/api/v1/demo/verify-otp" && request.method === "POST") {
-    try {
-      const { phone, otp } = await request.json() as any;
-      if (!phone || !otp) {
-        return new Response(JSON.stringify({ error: "Phone and verification code are required." }), {
-          status: 400, headers: { "Content-Type": "application/json" }
-        });
-      }
-
-      const result = await verifyOtpAndGetToken(phone, otp, env);
-      if (!result.success) {
-        // Map errors to user-friendly messages
-        const errorMap: Record<string, string> = {
-          "No OTP found for this number": "No verification code found. Please request a new code.",
-          "OTP expired": "This verification code has expired. Please request a new code.",
-          "Too many failed attempts": "Too many failed attempts. Please request a new code.",
-          "Invalid OTP": "Incorrect verification code. Please try again."
-        };
-        const friendlyError = errorMap[result.error || ""] || "Verification failed. Please try again.";
-        return new Response(JSON.stringify({ error: friendlyError }), {
-          status: 400, headers: { "Content-Type": "application/json" }
-        });
-      }
-
-      return new Response(JSON.stringify({ success: true, verificationToken: result.token }), {
-        status: 200, headers: { "Content-Type": "application/json" }
-      });
-    } catch (e: any) {
-      console.error("Demo verify-otp error:", e);
-      return new Response(JSON.stringify({ error: "Verification failed. Please try again." }), {
-        status: 500, headers: { "Content-Type": "application/json" }
-      });
-    }
-  }
 
   // POST /api/v1/demo/book — Create demo booking + generate access key
   if (path === "/api/v1/demo/book" && request.method === "POST") {
     try {
-      const { verificationToken, phone } = await request.json() as any;
-      if (!verificationToken || !phone) {
-        return new Response(JSON.stringify({ error: "Verification required before booking." }), {
+      const userObj = user as any;
+      if (!userObj.phone_number) {
+        return new Response(JSON.stringify({ error: "Phone verification required before booking." }), {
           status: 400, headers: { "Content-Type": "application/json" }
         });
       }
-
-      // Verify the OTP verification token
-      const payload = await verifyVerificationToken(verificationToken, env);
-      const verifiedPhone = payload.phone;
+      
+      const verifiedPhone = userObj.phone_number;
 
       // Check if user already has an active demo
       const existingDemos = await firestoreQuery(env, "demoRequests", {

@@ -2,7 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User, onAuthStateChanged, signInWithPopup, GoogleAuthProvider, signOut, getAdditionalUserInfo, signInWithCustomToken } from 'firebase/auth';
 import { auth } from './firebase';
 
-export interface GoogleSignInResult {
+interface GoogleSignInResult {
   user: User;
   isNewUser: boolean;
 }

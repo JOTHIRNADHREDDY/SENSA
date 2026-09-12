@@ -1,6 +1,6 @@
 import React from 'react';
 
-export interface LegalSection {
+interface LegalSection {
   id: string;
   title: string;
   content: React.ReactNode;

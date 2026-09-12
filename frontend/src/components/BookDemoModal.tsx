@@ -3,6 +3,14 @@ import React, { useState, useEffect } from 'react';
 import { X, CheckCircle2, ArrowRight, RefreshCw, Shield, AlertCircle, ArrowLeft, Check, Phone, Copy, Key, LogIn } from 'lucide-react';
 import { PhoneInput, PhoneData } from './PhoneInput';
 import { useAuth } from '../lib/AuthContext';
+import { auth } from '../lib/firebase';
+import { RecaptchaVerifier, linkWithPhoneNumber, ConfirmationResult } from 'firebase/auth';
+
+declare global {
+  interface Window {
+    recaptchaVerifier: any;
+  }
+}
 
 interface BookDemoModalProps {
   isOpen: boolean;
@@ -30,7 +38,7 @@ export const BookDemoModal: React.FC<BookDemoModalProps> = ({ isOpen, onClose, o
   const [verifyState, setVerifyState] = useState<AsyncState>('idle');
   const [bookState, setBookState] = useState<AsyncState>('idle');
   const [errorMsg, setErrorMsg] = useState('');
-  const [verificationToken, setVerificationToken] = useState<string | null>(null);
+  const [confirmationResult, setConfirmationResult] = useState<ConfirmationResult | null>(null);
   const [demoAccessKey, setDemoAccessKey] = useState<string | null>(null);
   const [demoExpiresAt, setDemoExpiresAt] = useState<string | null>(null);
   const [copied, setCopied] = useState(false);
@@ -68,7 +76,7 @@ export const BookDemoModal: React.FC<BookDemoModalProps> = ({ isOpen, onClose, o
       setBookState('idle');
       setErrorMsg('');
       setOtp(['', '', '', '', '', '']);
-      setVerificationToken(null);
+      setConfirmationResult(null);
       setCopied(false);
     }
   }, [isOpen]);
@@ -99,22 +107,35 @@ export const BookDemoModal: React.FC<BookDemoModalProps> = ({ isOpen, onClose, o
     setSendState('loading');
 
     try {
-      const token = await user!.getIdToken();
-      const res = await fetch(`${API_BASE_URL}/api/v1/demo/send-otp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ phone: phoneData.phone_e164 })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to send verification code');
-
+      if (!window.recaptchaVerifier) {
+        window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+          size: 'invisible',
+        });
+      }
+      
+      const appVerifier = window.recaptchaVerifier;
+      const result = await linkWithPhoneNumber(auth.currentUser!, phoneData.phone_e164, appVerifier);
+      
+      setConfirmationResult(result);
       setSendState('success');
       setStep('otp');
       setTimerSeconds(60);
       setCanResend(false);
     } catch (error: any) {
+      console.error("Firebase Phone Auth error:", error);
       setSendState('error');
-      setErrorMsg(error.message || 'Unable to send verification code. Please try again.');
+      if (error.code === 'auth/credential-already-in-use') {
+        setErrorMsg('This phone number is already linked to another account.');
+      } else if (error.code === 'auth/too-many-requests') {
+        setErrorMsg('Too many attempts. Please try again later.');
+      } else {
+        setErrorMsg(error.message || 'Unable to send verification code. Please try again.');
+      }
+      
+      if (window.recaptchaVerifier) {
+        window.recaptchaVerifier.clear();
+        window.recaptchaVerifier = undefined;
+      }
     }
   };
 
@@ -146,39 +167,38 @@ export const BookDemoModal: React.FC<BookDemoModalProps> = ({ isOpen, onClose, o
     e.preventDefault();
     const fullOtp = otp.join('');
     if (fullOtp.length < 6) { setErrorMsg('Please enter the complete 6-digit code'); return; }
-    if (verifyState === 'loading') return;
+    if (verifyState === 'loading' || !confirmationResult) return;
     setErrorMsg('');
     setVerifyState('loading');
 
     try {
-      const token = await user!.getIdToken();
-      const res = await fetch(`${API_BASE_URL}/api/v1/demo/verify-otp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ phone: phoneData.phone_e164, otp: fullOtp })
-      });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Verification failed');
+      await confirmationResult.confirm(fullOtp);
 
-      setVerificationToken(data.verificationToken);
       setVerifyState('success');
       // Auto-proceed to booking
-      await handleBookDemo(data.verificationToken);
+      await handleBookDemo();
     } catch (error: any) {
+      console.error("Verification failed:", error);
       setVerifyState('error');
-      setErrorMsg(error.message || 'Verification failed. Please try again.');
+      if (error.code === 'auth/invalid-verification-code') {
+        setErrorMsg('Incorrect verification code. Please try again.');
+      } else if (error.code === 'auth/code-expired') {
+        setErrorMsg('This verification code has expired. Please request a new code.');
+      } else {
+        setErrorMsg(error.message || 'Verification failed. Please try again.');
+      }
     }
   };
 
-  const handleBookDemo = async (vToken: string) => {
+  const handleBookDemo = async () => {
     setBookState('loading');
     setErrorMsg('');
     try {
-      const token = await user!.getIdToken();
+      // Force refresh the token so the backend gets the new phone_number claim
+      const token = await user!.getIdToken(true);
       const res = await fetch(`${API_BASE_URL}/api/v1/demo/book`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ verificationToken: vToken, phone: phoneData.phone_e164 })
       });
       const data = await res.json();
       if (!res.ok) throw new Error(data.error || 'Failed to book demo');
@@ -200,19 +220,22 @@ export const BookDemoModal: React.FC<BookDemoModalProps> = ({ isOpen, onClose, o
     setOtp(['', '', '', '', '', '']);
 
     try {
-      const token = await user!.getIdToken();
-      const res = await fetch(`${API_BASE_URL}/api/v1/demo/send-otp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json', 'Authorization': `Bearer ${token}` },
-        body: JSON.stringify({ phone: phoneData.phone_e164 })
+      if (window.recaptchaVerifier) {
+        window.recaptchaVerifier.clear();
+        window.recaptchaVerifier = undefined;
+      }
+      window.recaptchaVerifier = new RecaptchaVerifier(auth, 'recaptcha-container', {
+        size: 'invisible',
       });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || 'Failed to resend code');
-
+      const appVerifier = window.recaptchaVerifier;
+      const result = await linkWithPhoneNumber(auth.currentUser!, phoneData.phone_e164, appVerifier);
+      
+      setConfirmationResult(result);
       setSendState('success');
       setTimerSeconds(60);
       setCanResend(false);
     } catch (error: any) {
+      console.error("Firebase Phone Auth resend error:", error);
       setSendState('error');
       setErrorMsg(error.message || 'Failed to resend code. Please try again.');
     }
@@ -487,6 +510,8 @@ export const BookDemoModal: React.FC<BookDemoModalProps> = ({ isOpen, onClose, o
               </p>
             </div>
           </motion.div>
+          {/* Recaptcha container */}
+          <div id="recaptcha-container"></div>
         </motion.div>
       )}
     </AnimatePresence>

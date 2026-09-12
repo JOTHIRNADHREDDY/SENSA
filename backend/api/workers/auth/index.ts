@@ -1,5 +1,4 @@
 import { firestoreGet, firestoreCreate, firestoreUpdate, firestoreQuery } from "../../utils/firestore";
-import { generateAndSendOtp, verifyOtpAndGetToken } from "./otp";
 import { createFirebaseCustomToken, verifyVerificationToken } from "./jwt";
 
 // Helper for finding a user by a specific field
@@ -38,36 +37,7 @@ export async function handleAuth(request: Request, env: any) {
     }
   }
 
-  // POST /api/v1/auth/send-otp — Used by demo flow
-  if (path === "/api/v1/auth/send-otp" && request.method === "POST") {
-    try {
-      const { phone } = await request.json() as any;
-      if (!phone) return new Response(JSON.stringify({ error: "Phone number required" }), { status: 400, headers: { "Content-Type": "application/json" } });
-      const result = await generateAndSendOtp(phone, env);
-      if (!result.success) return new Response(JSON.stringify({ error: result.error }), { status: 429, headers: { "Content-Type": "application/json" } });
-      return new Response(JSON.stringify({ success: true }), { status: 200, headers: { "Content-Type": "application/json" } });
-    } catch (e: any) {
-      return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { "Content-Type": "application/json" } });
-    }
-  }
 
-  // POST /api/v1/auth/verify-otp — Used by demo flow
-  if (path === "/api/v1/auth/verify-otp" && request.method === "POST") {
-    try {
-      const { phone, otp } = await request.json() as any;
-      if (!phone || !otp) return new Response(JSON.stringify({ error: "Phone and OTP required" }), { status: 400, headers: { "Content-Type": "application/json" } });
-      
-      const result = await verifyOtpAndGetToken(phone, otp, env);
-      if (!result.success) return new Response(JSON.stringify({ error: result.error }), { status: 400, headers: { "Content-Type": "application/json" } });
-      
-      return new Response(JSON.stringify({ 
-        success: true, 
-        verificationToken: result.token
-      }), { status: 200, headers: { "Content-Type": "application/json" } });
-    } catch (e: any) {
-      return new Response(JSON.stringify({ error: e.message }), { status: 500, headers: { "Content-Type": "application/json" } });
-    }
-  }
 
   // POST /api/v1/auth/register — Email/password signup (NO phone required)
   if (path === "/api/v1/auth/register" && request.method === "POST") {

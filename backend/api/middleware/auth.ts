@@ -43,7 +43,7 @@ function base64UrlToUint8Array(base64Url: string) {
   return outputArray;
 }
 
-export async function verifyAuth(request: Request, env?: any): Promise<{ uid: string, email: string, orgId?: string } | null> {
+export async function verifyAuth(request: Request, env?: any): Promise<{ uid: string, email: string, phone_number?: string, orgId?: string } | null> {
   const FIREBASE_PROJECT_ID = env?.FIREBASE_PROJECT_ID || "sensa-f74e9";
   const ISSUER = `https://securetoken.google.com/${FIREBASE_PROJECT_ID}`;
   const authHeader = request.headers.get('Authorization');
@@ -106,6 +106,7 @@ export async function verifyAuth(request: Request, env?: any): Promise<{ uid: st
     return {
       uid: payload.sub,
       email: payload.email,
+      phone_number: payload.phone_number,
       orgId: payload.orgId // Custom claim
     };
   } catch (e) {

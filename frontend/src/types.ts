@@ -1,6 +1,5 @@
 export type DataStorageMode = 'local' | 'hybrid' | 'cloud';
 
-export type ThreatLevel = 'CRITICAL' | 'WARNING' | 'CLEAR';
 
 export interface Point {
   x: number;
@@ -41,7 +40,7 @@ export interface SecurityAlert {
   cameraName: string;
   location: string;
   timestamp: string;
-  threatLevel: ThreatLevel;
+  threatLevel: 'CRITICAL' | 'WARNING' | 'CLEAR';
   detectionType: string;
   confidence: number;
   whatsappSent: boolean;
@@ -50,23 +49,11 @@ export interface SecurityAlert {
   details: string;
 }
 
-export interface CurrencyConfig {
-  code: string;
-  name: string;
-  symbol: string;
-  flag: string;
-  basicMonthly: number;
-  proMonthly: number;
-  businessMonthly: number;
-  basicAnnual: number;
-  proAnnual: number;
-  businessAnnual: number;
-}
 
 export interface AiAnalysisResult {
   detectedObjects: string[];
   summary: string;
-  threatLevel: ThreatLevel;
+  threatLevel: 'CRITICAL' | 'WARNING' | 'CLEAR';
   confidence: number;
   zoneBreached: boolean;
   whatsappDraft: string;
