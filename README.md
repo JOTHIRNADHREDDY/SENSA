@@ -8,7 +8,7 @@ SENSA turns authorized CCTV recordings into searchable investigations. Describe 
 
 The controlled demonstration is **synthetic**. Its accepted shelf comparison is **UNRESOLVED**. Visible detections change from six to five, with a separate synthetic renderer reference. Physical removal, real identity, and responsibility remain unverified.
 
-![SENSA source playback](demo/screenshots/03-Source-playback.jpg)
+![SENSA source playback — Jothirnadh](demo/screenshots/03-Source-playback.png)
 
 ## Describe → Discover → Reconstruct → Verify
 
@@ -21,7 +21,7 @@ An investigator looking for missing warehouse stock may have hours of footage an
 - Preserve frame, model run, artifact, source-clock, and coverage provenance.
 - Export versioned PDF and portable JSON evidence with uncertainty and human review.
 
-![Shelf evidence review](demo/screenshots/04-Shelf-comparison.jpg)
+![Shelf evidence review — Jothirnadh](demo/screenshots/04-Shelf-comparison.png)
 
 ## Architecture
 
