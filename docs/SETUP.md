@@ -36,7 +36,7 @@ Use the same `SENSA_DATA_DIR` and `DATABASE_URL` in the API and both workers. Co
 | `SENSA_MODEL_ESCALATION` | Optional `muse-wonder-1.0` slot, unused in the approved demo. |
 | `SENSA_DATA_DIR` | Persistent private data directory. |
 | `DATABASE_URL` | SQLite in that directory by default. Optional PostgreSQL requires `backend/requirements-postgres.txt`. |
-| `SENSA_AUTH_MODE` | `signin`, or `local` for same-computer access. |
+| `SENSA_AUTH_MODE` | `signin` (default), `local` for same-computer access, or `public` for a shared no-sign-in investigator. Public mode exposes all case and recording data and permits writes and billable model requests. |
 | `SENSA_ENV` | `production` requires HTTPS origins and rejects local auth mode. |
 | `SENSA_ORIGINS` | Comma-separated allowed browser origins, default local ports 3001. |
 | `SENSA_MAX_UPLOAD_MB` | 2048 default. |

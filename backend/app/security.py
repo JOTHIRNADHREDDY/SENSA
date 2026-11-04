@@ -1,6 +1,7 @@
 import hashlib
 import hmac
 import secrets
+import threading
 import time
 from urllib.parse import urlsplit
 
@@ -9,6 +10,26 @@ from sqlalchemy import select
 
 from . import config
 from .db import DB, Asset, Case, CaseEvidence, CaseMember, Event, CaseVideo, Session, User
+
+PUBLIC_EMAIL = "public@sensa.internal"
+public_lock = threading.Lock()
+
+
+def public_workspace_user():
+    with public_lock, DB.begin() as db:
+        user = db.scalars(select(User).where(User.email == PUBLIC_EMAIL)).first()
+        if not user:
+            user = User(
+                email=PUBLIC_EMAIL,
+                name="Public investigator",
+                role="operator",
+                password=hash_password(secrets.token_urlsafe(48)),
+            )
+            db.add(user)
+            db.flush()
+        elif user.role != "operator":
+            raise HTTPException(503, "Public workspace account has an invalid role")
+        return user
 
 
 def require_local_access(request: Request):
@@ -45,6 +66,8 @@ def verify_password(password, stored):
 
 
 def current_user(request: Request):
+    if config.AUTH_MODE == "public":
+        return public_workspace_user()
     token = request.cookies.get("sensa_session", "")
     with DB() as db:
         session = db.get(Session, hashlib.sha256(token.encode()).hexdigest())
@@ -70,7 +93,10 @@ def administrator(user: User = Depends(current_user)):
 
 def allowed_case(db, user, case):
     return case and (
-        user.role == "admin" or case.owner_id == user.id or db.get(CaseMember, (case.id, user.id)) is not None
+        user.role == "admin"
+        or (config.AUTH_MODE == "public" and user.email == PUBLIC_EMAIL)
+        or case.owner_id == user.id
+        or db.get(CaseMember, (case.id, user.id)) is not None
     )
 
 
@@ -84,7 +110,11 @@ def require_case(db, user, case_id):
 def allowed_asset(db, user, asset):
     if not asset:
         return False
-    if user.role == "admin" or asset.owner_id == user.id:
+    if (
+        user.role == "admin"
+        or (config.AUTH_MODE == "public" and user.email == PUBLIC_EMAIL)
+        or asset.owner_id == user.id
+    ):
         return True
     cases = db.scalars(
         select(Case)

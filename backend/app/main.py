@@ -202,6 +202,8 @@ def local_workspace(request: Request, response: Response):
 
 @app.post("/api/auth/setup", status_code=201)
 def setup(body: Credentials, request: Request, response: Response):
+    if config.AUTH_MODE != "signin":
+        raise HTTPException(404, "Sign-in is not enabled")
     rate_auth(request)
     with auth_lock, DB.begin() as db:
         if db.scalar(select(func.count()).select_from(User)):
@@ -216,6 +218,8 @@ def setup(body: Credentials, request: Request, response: Response):
 
 @app.post("/api/auth/login")
 def login(body: Credentials, request: Request, response: Response):
+    if config.AUTH_MODE == "public":
+        raise HTTPException(404, "Sign-in is not enabled")
     rate_auth(request)
     with DB.begin() as db:
         user = db.scalars(select(User).where(User.email == body.email.lower())).first()

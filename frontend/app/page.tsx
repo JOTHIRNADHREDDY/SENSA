@@ -185,7 +185,9 @@ function SectionHeading({
 
 export default function App() {
   const [user, setUser] = useState<User | null>(null);
-  const [authMode, setAuthMode] = useState<"signin" | "local" | null>(null);
+  const [authMode, setAuthMode] = useState<
+    "signin" | "local" | "public" | null
+  >(null);
   const [setup, setSetup] = useState(false);
   const [loading, setLoading] = useState(true);
   const [offline, setOffline] = useState(false);
@@ -249,7 +251,7 @@ export default function App() {
       try {
         const health = await api<{
           setup_required: boolean;
-          auth_mode: "signin" | "local";
+          auth_mode: "signin" | "local" | "public";
           active_workers: number;
         }>("/health");
         setActiveWorkers(health.active_workers);
@@ -257,6 +259,8 @@ export default function App() {
         setSetup(health.setup_required);
         if (health.auth_mode === "local") {
           setUser(await api<User>("/auth/local", post({})));
+        } else if (health.auth_mode === "public") {
+          setUser(await api<User>("/auth/me"));
         } else {
           try {
             setUser(await api<User>("/auth/me"));
@@ -298,9 +302,13 @@ export default function App() {
         setDemoLoading(false);
     } catch (e) {
       if (e instanceof ApiError && e.status === 401) {
-        if (authMode === "local") {
+        if (authMode === "local" || authMode === "public") {
           try {
-            setUser(await api<User>("/auth/local", post({})));
+            setUser(
+              authMode === "public"
+                ? await api<User>("/auth/me")
+                : await api<User>("/auth/local", post({})),
+            );
           } catch {
             setOffline(true);
           }
@@ -780,9 +788,11 @@ export default function App() {
           </span>
           <div>
             <strong>Warehouse workspace</strong>
-            <span>LOCAL ENVIRONMENT</span>
+            <span>
+              {authMode === "public" ? "PUBLIC WORKSPACE" : "LOCAL ENVIRONMENT"}
+            </span>
           </div>
-          <LockKeyhole size={12} />
+          {authMode !== "public" && <LockKeyhole size={12} />}
         </div>
         <div className="nav-label">PLATFORM</div>
         <nav>
@@ -850,7 +860,9 @@ export default function App() {
               <span>
                 {authMode === "local"
                   ? "Local access · Administrator"
-                  : humanize(user.role)}
+                  : authMode === "public"
+                    ? "Public access · Investigator"
+                    : humanize(user.role)}
               </span>
             </div>
             {authMode === "signin" && (

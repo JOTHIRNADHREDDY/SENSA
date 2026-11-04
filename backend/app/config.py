@@ -7,8 +7,8 @@ DATA.mkdir(parents=True, exist_ok=True)
 DATABASE_URL = os.getenv("DATABASE_URL", f"sqlite:///{DATA / 'sensa.db'}")
 PRODUCTION = os.getenv("SENSA_ENV") == "production"
 AUTH_MODE = os.getenv("SENSA_AUTH_MODE", "signin")
-if AUTH_MODE not in {"signin", "local"}:
-    raise ValueError("SENSA_AUTH_MODE must be signin or local")
+if AUTH_MODE not in {"signin", "local", "public"}:
+    raise ValueError("SENSA_AUTH_MODE must be signin, local or public")
 if PRODUCTION and AUTH_MODE == "local":
     raise ValueError("Local access without sign-in is not permitted in production")
 ORIGINS = os.getenv("SENSA_ORIGINS", "http://127.0.0.1:3001,http://localhost:3001").split(",")

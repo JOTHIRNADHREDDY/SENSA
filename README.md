@@ -56,7 +56,7 @@ npm --prefix frontend run build
 
 Open [the local application](http://127.0.0.1:3001) and create your first administrator. For a development frontend, omit `-Production -Background`. Stop launcher-owned services with `scripts/stop.ps1`. On macOS or Linux, use the manual backend, frontend, and worker commands in [setup](docs/SETUP.md).
 
-The launcher loads nonempty values from private `.env`. Local synthetic processing needs no API key. Set `MODEL_API_KEY` only for backend/workers and explicitly authorize external processing in the application. `SENSA_AUTH_MODE=signin` is the default. Optional `local` mode permits only access on the same computer. Model IDs remain `sam-3.1` and `muse-spark-1.3`. [Environment and setup details](docs/SETUP.md)
+The launcher loads nonempty values from private `.env`. Local synthetic processing needs no API key. Set `MODEL_API_KEY` only for backend/workers and explicitly authorize external processing in the application. `SENSA_AUTH_MODE=signin` is the default. Optional `local` mode permits only access on the same computer. The public demo uses a shared `public` operator with access to all recordings and investigations, including writes and billable model requests. Model IDs remain `sam-3.1` and `muse-spark-1.3`. [Environment and setup details](docs/SETUP.md)
 
 ## Try the demo
 
@@ -70,7 +70,7 @@ For a fresh interactive workspace, choose **Explore the demo** to generate four 
 docker compose --profile reviewer up -d --build
 ```
 
-Open [the local reviewer](http://127.0.0.1:3002), search `possible_carry`, select an episode, and replay the original synthetic source. The four native frames and both PDFs are available for inspection. The reviewer has no database, model credential, or mutation API. The [public Worker](https://sensa.p-jothirnadh1.workers.dev/) serves the full investigator dashboard with sign-in; its API reaches the backend on this computer through a private Cloudflare Tunnel. The computer and Tunnel must remain online. [Deployment, HTTPS, backup and recovery](docs/DEPLOYMENT.md)
+Open [the local reviewer](http://127.0.0.1:3002), search `possible_carry`, select an episode, and replay the original synthetic source. The four native frames and both PDFs are available for inspection. The reviewer has no database, model credential, or mutation API. The [public Worker](https://sensa.p-jothirnadh1.workers.dev/) serves the full investigator dashboard without sign-in; its API reaches the backend on this computer through a private Cloudflare Tunnel. The computer and Tunnel must remain online. [Deployment, HTTPS, backup and recovery](docs/DEPLOYMENT.md)
 
 ## Evidence release
 
