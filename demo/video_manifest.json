@@ -1,0 +1,54 @@
+{
+  "version": 1,
+  "reviewed_on": "2026-11-04",
+  "sources": [
+    {
+      "id": "parking-lot",
+      "title": "BLK-HDPTZ12 Security Camera Parking Lot Surveillance Video",
+      "creator": "Supercircuits",
+      "source_url": "https://commons.wikimedia.org/wiki/File:BLK-HDPTZ12_Security_Camera_Parking_Lot_Surveillance_Video.webm",
+      "source_revision": "1269449350",
+      "download_url": "https://upload.wikimedia.org/wikipedia/commons/1/14/BLK-HDPTZ12_Security_Camera_Parking_Lot_Surveillance_Video.webm",
+      "filename": "parking-lot.webm",
+      "format": "WebM, VP9/Opus",
+      "size_bytes": 67736771,
+      "sha256": "ff14641c693dbd1e78b1d22042876b5d3a4068c3301be8d07e504dd592debfaa",
+      "license": "Wikimedia PD-automated public-domain claim",
+      "license_caveat": "Commons warns that many jurisdictions lack clear precedent for automated recordings. This is the source page's claim, not independent worldwide clearance.",
+      "attribution": "Supercircuits, via Wikimedia Commons. Preserve the source link and jurisdictional caveat.",
+      "access": "download_with_caveat_acknowledgment",
+      "redistribution": "Not bundled or rehosted by this project. Download directly for local evaluation."
+    },
+    {
+      "id": "ufpr-planalto801",
+      "title": "UFPR-Planalto801",
+      "creator": "Cristiano Bacelar de Oliveira and UFPR collaborators; footage released by Brazilian authorities",
+      "source_url": "https://web.inf.ufpr.br/vri/databases/ufpr-planalto801/",
+      "download_url": null,
+      "filename": null,
+      "format": null,
+      "size_bytes": null,
+      "sha256": null,
+      "license": "Annotations restricted to registered academic, non-commercial research. Footage rights require separate review.",
+      "attribution": "de Oliveira et al., A Multilevel Strategy to Improve People Tracking in a Real-World Scenario, VISAPP 2024.",
+      "access": "manual_permission_required",
+      "redistribution": "No video or annotation files are downloaded or rehosted."
+    },
+    {
+      "id": "virat",
+      "title": "VIRAT Ground Camera Dataset",
+      "creator": "Kitware and VIRAT collaborators",
+      "source_url": "https://viratdata.org/",
+      "agreement_url": "https://viratdata.org/resources/VIRAT-Video-Data-Set-Protection-Agreement-1-4-11.pdf",
+      "download_url": null,
+      "filename": null,
+      "format": null,
+      "size_bytes": null,
+      "sha256": null,
+      "license": "VIRAT Video Dataset Usage Agreement. Each user must accept the agreement; onward distribution is restricted.",
+      "attribution": "Oh et al., A Large-scale Benchmark Dataset for Event Recognition in Surveillance Video, CVPR 2011.",
+      "access": "manual_permission_required",
+      "redistribution": "No footage is downloaded or rehosted. The separate aerial collection has different terms."
+    }
+  ]
+}

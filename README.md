@@ -60,6 +60,8 @@ The launcher loads nonempty values from private `.env`. Local synthetic processi
 
 ## Try the demo
 
+The [reviewer and real-video guide](demo/README.md) covers offline evidence review, the parking-lot smoke test, and access conditions for UFPR and VIRAT.
+
 For a fresh interactive workspace, choose **Explore the demo** to generate four synthetic recordings through the actual media pipeline. Fixture annotations apply only to generated, hash-matched sources. To inspect the approved missing-stock case with its saved v8 evidence and no model access, run the read-only reviewer.
 
 ```sh

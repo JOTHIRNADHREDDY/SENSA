@@ -48,4 +48,7 @@ frontend/next-env.d.ts
 !/docs/SECURITY_AND_PRIVACY.md
 !/docs/RELEASE.md
 !/docs/ATTRIBUTION.md
+!/docs/REAL_VIDEO_QA.md
 /scripts/package_hackathon_release.py
+/demo/videos/*
+!/demo/videos/README.md

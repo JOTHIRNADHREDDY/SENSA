@@ -32,6 +32,7 @@ for name in (
 for path, method, expected in (
     ("/api/health", "GET", 404),
     ("/.env", "GET", 404),
+    ("/demo/videos/parking-lot.webm", "GET", 404),
     ("/", "POST", 405),
 ):
     try:

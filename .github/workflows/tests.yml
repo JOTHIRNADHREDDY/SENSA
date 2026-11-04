@@ -16,8 +16,8 @@ jobs:
           cache-dependency-path: backend/requirements-lock.txt
       - run: pip install -r backend/requirements-release.txt
       - run: python -m pip check
-      - run: python -m ruff check backend scripts/validate_release.py
-      - run: python -m ruff format --check backend scripts/validate_release.py
+      - run: python -m ruff check backend scripts/validate_release.py scripts/video_smoke.py scripts/download_demo_videos.py scripts/check_reviewer.py scripts/publication_check.py
+      - run: python -m ruff format --check backend scripts/validate_release.py scripts/video_smoke.py scripts/download_demo_videos.py scripts/check_reviewer.py scripts/publication_check.py
       - run: python -m pytest -q
       - run: python scripts/validate_release.py
       - run: python scripts/publication_check.py
@@ -33,6 +33,7 @@ jobs:
           curl --fail http://127.0.0.1:3002/
           python scripts/check_reviewer.py http://127.0.0.1:3002
           docker compose exec -T backend python -c "from app.db import DB; from app.worker import active_worker_count; d=DB(); assert active_worker_count(d)==2"
+          python scripts/video_smoke.py --base-url http://127.0.0.1:8000
       - if: always()
         run: docker compose down
   frontend:

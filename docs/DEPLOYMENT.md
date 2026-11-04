@@ -16,7 +16,7 @@ All four additive migrations run before service use. The API startup applies the
 docker compose --profile reviewer up -d --build --wait
 ```
 
-Open host loopback port 3002. The review service contains approved synthetic v8 JSON, native evidence, source clips, screenshots and PDFs. It supports timeline search and source seeking. The underlying application remains available to authorized local users. No private database is copied into the reviewer image.
+Open host loopback port 3002. The review service contains approved synthetic v8 JSON, native evidence, source clips, the walkthrough and PDFs. It supports episode search, track timelines, source seeking and saved detection boxes. The underlying application remains available to authorized local users. The reviewer image copies only the approved evidence paths and has no database volume.
 
 For HTTPS, provide an authorized hostname through `SENSA_REVIEW_HOST`, point its DNS to your Docker host, and allow inbound ports 80 and 443. Then run:
 

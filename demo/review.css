@@ -26,3 +26,12 @@ figure { margin: 0; padding: 12px; background: #111c2e; border-radius: 8px; }
 figure img { width: 100%; height: auto; }
 figcaption { color: #9fb0c4; line-height: 1.5; overflow-wrap: anywhere; font-size: 13px; }
 footer { color: #9fb0c4; border-top: 1px solid #243247; margin-top: 48px; font-size: 13px; }
+select, #overlay-toggle { padding: 10px; font: inherit; color: #eaf2f8; background: #172337; border: 1px solid #71839b; border-radius: 6px; }
+#frame-select { max-width: 100%; }
+#frame-inspection { margin-top: 16px; overflow-wrap: anywhere; }
+.inspection-image { position: relative; max-width: 720px; }
+.inspection-image img { display: block; width: 100%; }
+.inspection-image svg { position: absolute; inset: 0; width: 100%; height: 100%; pointer-events: none; }
+.inspection-image rect { fill: none; stroke: #fbbf24; stroke-width: 2; vector-effect: non-scaling-stroke; }
+.track-times { display: flex; flex-wrap: wrap; gap: 7px; padding-top: 8px; }
+.track-times button { background: #111c2e; border: 1px solid #71839b; border-radius: 4px; color: #eaf2f8; padding: 6px; cursor: pointer; }

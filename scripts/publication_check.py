@@ -65,7 +65,10 @@ def main():
             set(Path(name).parts) & FORBIDDEN
             or (Path(name).name.startswith(".env") and name != ".env.example")
             or path.suffix in {".db", ".sqlite", ".sqlite3", ".pem", ".key", ".zip"}
-            or (path.suffix in {".mp4", ".mov", ".avi", ".mkv"} and name not in MEDIA)
+            or (
+                path.suffix in {".mp4", ".webm", ".mov", ".avi", ".mkv"}
+                and name not in MEDIA
+            )
         ):
             errors.append(f"Private or unexpected release path {name}")
         if path.is_file():

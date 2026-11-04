@@ -42,10 +42,19 @@
         <h2 id="frames-title">Four original evidence frames</h2>
         <p>The PDFs embed these exact native pixels. Frame hashes and source registrations are in the portable JSON.</p>
         <div id="frames" class="frames"></div>
+        <label for="frame-select">Inspect saved detections and provenance</label>
+        <select id="frame-select" disabled></select>
+        <button id="overlay-toggle" type="button" aria-pressed="true" disabled>Detection boxes</button>
+        <div id="frame-inspection"></div>
+      </section>
+      <section aria-labelledby="tracks-title">
+        <h2 id="tracks-title">Anonymous track timelines</h2>
+        <p>Tracks show sampled associations within a source segment. Continuity between samples remains uncertain.</p>
+        <div id="tracks" class="episodes"></div>
       </section>
       <section>
         <h2>Shelf comparison</h2>
-        <p>At 4.000 s and 18.100 s, visible detections change from six to five. The separate synthetic renderer reference also changes by one. The accepted comparison remains unresolved. Its shelf region is [0.075, 0.22, 0.54, 0.82].</p>
+        <p id="comparison">Loading the accepted comparison…</p>
         <p>SAM 3.1 supplies saved localization and masks. Muse Spark 1.3 supplies saved scene interpretations. Repeated outputs from one sample do not establish independent corroboration.</p>
       </section>
     </main>

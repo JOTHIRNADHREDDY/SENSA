@@ -12,4 +12,5 @@
 data
 output
 tmp
+demo/videos
 *.log

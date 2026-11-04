@@ -15,7 +15,7 @@
 	respond @write 405
 	@root path /
 	rewrite @root /demo/index.html
-	@approved path /demo/* /reports/*
+	@approved path /demo/index.html /demo/review.js /demo/review.css /demo/walkthrough.mp4 /demo/evidence/frame-*.png /demo/sources/synthetic-camera-1.mp4 /demo/sources/synthetic-camera-2.mp4 /reports/SENSA_Hackathon_Investigation_Summary_FINAL.pdf /reports/SENSA_Hackathon_Technical_Evidence_Appendix_FINAL.pdf /reports/SENSA_Hackathon_Report_FINAL.json /reports/SHA256SUMS.txt /reports/THIRD_PARTY_NOTICES.txt
 	handle @approved {
 		file_server
 	}

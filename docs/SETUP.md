@@ -48,3 +48,15 @@ Use the same `SENSA_DATA_DIR` and `DATABASE_URL` in the API and both workers. Co
 The first administrator is created through setup. Passwords need at least 12 characters. The opt-in `prepare_demo.py` helper creates randomized private bootstrap credentials. Keep its generated access file outside Git.
 
 For fresh fixture exploration, choose **Explore the demo**. For the approved saved v8 case, launch the read-only reviewer described in [deployment](DEPLOYMENT.md).
+
+## Troubleshooting
+
+| Symptom | Check |
+| --- | --- |
+| Port 3001 or 8001 is already in use | Stop only the known SENSA services with `scripts/stop.ps1`, or choose alternate ports for the manual launch and update `BACKEND_URL` and `SENSA_ORIGINS`. Rebuild the frontend when the proxy target changes. |
+| UI loads but API requests fail | Check `http://127.0.0.1:8001/api/health` on a native launch or port 8000 with Compose. Start the API and apply migrations in the same environment the workers use. |
+| Jobs remain queued | Verify two active workers in `/api/health` and confirm they share the API’s database and media path. Read the local worker logs or `docker compose logs worker`. |
+| Local sign-in fails | Use the administrator created at setup. The optional `local` mode accepts only loopback requests and must stay outside production. |
+| Decoder rejects a recording | Verify it is a supported MP4 or WebM, check file integrity and limits, and install the pinned media dependencies. The file extension alone does not establish the format. |
+| Meta analysis is unavailable | Check backend provider readiness and supply the key through private environment configuration. After restarting API and workers, authorize analysis for the selected source. Offline review works without a key. |
+| Reviewer loads without evidence | Start the reviewer with Compose or Caddy and open its HTTP URL. The page fetches JSON and media from the same origin. |
