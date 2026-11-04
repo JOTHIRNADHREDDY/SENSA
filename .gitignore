@@ -3,6 +3,7 @@ node_modules/
 .next/
 frontend/out/
 wrangler.live.jsonc
+.wrangler/
 data/
 .env
 .env.*

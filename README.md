@@ -2,7 +2,7 @@
 
 **Cameras that understand. Investigations that find evidence.**
 
-[GitHub source](https://github.com/JOTHIRNADHREDDY/SENSA) · [Demo video](demo/walkthrough.mp4) · [Investigation summary](reports/SENSA_Hackathon_Investigation_Summary_FINAL.pdf) · [Technical appendix](reports/SENSA_Hackathon_Technical_Evidence_Appendix_FINAL.pdf)
+[Live dashboard](https://sensa.p-jothirnadh1.workers.dev/) · [GitHub source](https://github.com/JOTHIRNADHREDDY/SENSA) · [Demo video](demo/walkthrough.mp4) · [Investigation summary](reports/SENSA_Hackathon_Investigation_Summary_FINAL.pdf) · [Technical appendix](reports/SENSA_Hackathon_Technical_Evidence_Appendix_FINAL.pdf)
 
 SENSA turns authorized CCTV recordings into searchable investigations. Describe what is missing or what to find, choose the recordings, and discover candidate people, objects, interactions, and time intervals without knowing the incident timestamp. Open each finding’s original footage, source-relative timestamp, and evidence before deciding what it supports.
 
@@ -70,7 +70,7 @@ For a fresh interactive workspace, choose **Explore the demo** to generate four 
 docker compose --profile reviewer up -d --build
 ```
 
-Open [the local reviewer](http://127.0.0.1:3002), search `possible_carry`, select an episode, and replay the original synthetic source. The four native frames and both PDFs are available for inspection. The reviewer has no database, model credential, or mutation API. A full interactive saved case remains in the prepared private workspace. The public reviewer uses its approved portable snapshot. [Deployment, HTTPS, backup and recovery](docs/DEPLOYMENT.md)
+Open [the local reviewer](http://127.0.0.1:3002), search `possible_carry`, select an episode, and replay the original synthetic source. The four native frames and both PDFs are available for inspection. The reviewer has no database, model credential, or mutation API. The [public Worker](https://sensa.p-jothirnadh1.workers.dev/) serves the full investigator dashboard with sign-in; its API reaches the backend on this computer through a private Cloudflare Tunnel. The computer and Tunnel must remain online. [Deployment, HTTPS, backup and recovery](docs/DEPLOYMENT.md)
 
 ## Evidence release
 

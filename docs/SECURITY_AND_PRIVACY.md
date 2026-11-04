@@ -4,7 +4,7 @@ Credentials are read server-side from environment variables. The repository’s 
 
 Users authenticate through salted scrypt passwords and random opaque sessions whose hashes are stored in the database. Cookies are HttpOnly and SameSite Strict. Production configuration requires HTTPS and secure cookies. Mutating browser requests validate Origin. Asset and case access is checked in the backend. Optional local mode permits same-origin loopback access and is rejected in production.
 
-The public reviewer is a separate static service serving only the approved synthetic demo and reports. It rejects write methods and has no API route, database connection, worker access or model credential. The Compose HTTPS gateway routes only to this service. Investigator services bind to loopback and should be reached through a trusted tunnel or VPN.
+The read-only reviewer is a separate static service serving only the approved synthetic demo and reports. It rejects write methods and has no API route, database connection, worker access or model credential. The Compose HTTPS gateway routes only to this service. The live workers.dev dashboard serves static frontend assets and forwards `/api/*` through a Cloudflare VPC Service and Tunnel to the loopback-bound investigator API. The public API requires sign-in; evidence, database, worker processes and the model credential remain on the owner's computer.
 
 Only use authorized footage. Original bytes and native artifacts are hash checked. External inference requires authorization, and uploaded provider files have explicit cleanup handling. Retention quarantine is reversible. Back up the SQLite database and evidence volume together, following [deployment](DEPLOYMENT.md).
 

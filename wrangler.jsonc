@@ -3,8 +3,17 @@
   "name": "sensa",
   "compatibility_date": "2026-11-04",
   "workers_dev": true,
+  "main": "workers/live.mjs",
   "assets": {
-    "directory": "./output/reviewer-static",
+    "directory": "./frontend/out",
+    "binding": "ASSETS",
+    "run_worker_first": ["/api/*"],
     "not_found_handling": "404-page"
-  }
+  },
+  "vpc_services": [
+    {
+      "binding": "SENSA_API",
+      "service_id": "01a1a7df-c59c-7bf0-8cf8-ac9c5e1c5c06"
+    }
+  ]
 }
