@@ -16,6 +16,6 @@ The source chain is recording → source registration → native frame/artifact 
 
 ## Reviewer and deployment boundary
 
-`demo/index.html` is a static read-only review of the approved synthetic v8 JSON. It shows searchable episodes, source playback, four unchanged native PNGs and PDF downloads. Caddy serves only `demo/` and `reports/`, rejects writes, and exposes no investigation API. The reviewer container has no database volume or model key.
+`demo/index.html` is a static read-only review of the approved synthetic v8 JSON. It shows searchable episodes, track and source playback, saved detection boxes, four native PNGs and PDF downloads. The Caddy reviewer serves an explicit asset allowlist and rejects writes. The static build assembles the same approved public files for hosting without a database, API or model key. [Deployment](DEPLOYMENT.md)
 
 Docker Compose runs the API, frontend and two workers with one persistent SQLite/media volume. The optional HTTPS gateway publishes only the reviewer. Investigator ports stay on host loopback. See [deployment](DEPLOYMENT.md) for persistence and backup.

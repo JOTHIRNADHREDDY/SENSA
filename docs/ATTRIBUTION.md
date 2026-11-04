@@ -113,6 +113,8 @@ The PDFs embed subsets of the Bitstream Vera fonts supplied by ReportLab. Their 
 
 The two source videos and four native PNGs are generated synthetic fixtures. Their exact hashes are validated against the approved v8 export. Existing fixture provenance assigns CC0-1.0 to the generated footage. Screenshots and the walkthrough show the actual interface and synthetic material. The PDFs and JSON contain saved Meta-derived observations. No real CCTV, model weights, or raw provider response dumps are published.
 
+The real-video test used the Supercircuits parking-lot recording available from Commons. Its public-domain claim, caveat, exact file identity and the UFPR and VIRAT access terms are recorded in the source guide and manifest. [Video source guide](../demo/videos/README.md)
+
 Meta SAM 3.1 and Muse Spark 1.3 are called through the existing Meta Standard adapters. The installed meta-sam-parser uses the SAM License. Meta service and event terms require the owner’s review for use and redistribution of results. A public source release does not create a new project-wide license.
 
 Caddy container images are sourced from upstream Caddy (Apache-2.0). Python and Node base images include their own notices. imageio-ffmpeg includes platform-specific FFmpeg binaries upon installation. Inspect the installed wheel and FFmpeg build’s notices and codec configuration before distributing binary images. This repository ships the package reference, without bundling the binary.

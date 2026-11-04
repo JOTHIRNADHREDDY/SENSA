@@ -62,6 +62,8 @@ The launcher loads nonempty values from private `.env`. Local synthetic processi
 
 The [reviewer and real-video guide](demo/README.md) covers offline evidence review, the parking-lot smoke test, and access conditions for UFPR and VIRAT.
 
+The 316.71-second parking-lot recording passed ingestion, source range retrieval, timestamp extraction, frame integrity and report export. Live SAM 3.1 and Muse Spark 1.3 inspection covered sampled frames from 0–8 seconds. [Real-video QA](docs/REAL_VIDEO_QA.md)
+
 For a fresh interactive workspace, choose **Explore the demo** to generate four synthetic recordings through the actual media pipeline. Fixture annotations apply only to generated, hash-matched sources. To inspect the approved missing-stock case with its saved v8 evidence and no model access, run the read-only reviewer.
 
 ```sh
@@ -96,7 +98,7 @@ npm --prefix frontend run typecheck
 npm --prefix frontend run lint
 ```
 
-GitHub Actions runs backend and frontend verification, evidence checks, Docker builds and the shared SQLite stack. The TypeScript lint command checks unused code and unreachable statements. [Actual executed results and limitations](docs/RELEASE.md)
+The final local run passed 136 backend and 6 frontend tests. GitHub Actions runs the suites, evidence checks, Docker builds, a shared SQLite stack, an ingestion smoke test and a Chrome reviewer test. The TypeScript lint command checks unused code and unreachable statements. [Release verification](docs/RELEASE.md)
 
 ## Limitations, privacy, and rights
 

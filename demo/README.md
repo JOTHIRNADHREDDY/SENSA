@@ -2,7 +2,7 @@
 
 ## Offline reviewer
 
-From a clean clone, run `docker compose --profile reviewer up -d --build reviewer` and open [the local reviewer](http://127.0.0.1:3002/). The initial image build may pull dependencies. Once running, review uses only local assets and makes zero Meta requests.
+From a clean clone, run `docker compose --profile reviewer up -d --build reviewer` and open [the local reviewer](http://127.0.0.1:3002/). The initial image build may pull dependencies. Once running, review uses only local assets and makes zero Meta requests. A standalone static bundle can also be built for root-path hosting. [Static hosting instructions](../docs/DEPLOYMENT.md#static-hosting-on-cloudflare-pages)
 
 Search for `possible_carry` or a camera name. Select an episode or a timestamp in an anonymous track to seek the original synthetic clip. Choose a pinned evidence frame to inspect its saved boxes, observation IDs, model runs, frame hash and source registration. Compare the shelf before and after samples. The 6-to-5 change in visible detections is separate from the synthetic inventory reference. The result remains unresolved and there is no human conclusion.
 

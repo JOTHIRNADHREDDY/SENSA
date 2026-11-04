@@ -1,5 +1,12 @@
 # Repository release audit
 
+## Final hackathon release notes
+
+- Verified the parking-lot upload-to-report workflow and cross-checked its private outputs with stored records. Meta sampling covered 0–8 seconds. [Real-video QA](REAL_VIDEO_QA.md)
+- Prepared the same approved v8 reviewer for static hosting. The build includes only public synthetic evidence and preserves both PDF and JSON downloads. [Reviewer and dataset guide](../demo/README.md) · [Deployment](DEPLOYMENT.md)
+- The final local suite passed 136 backend tests and 6 frontend tests. Build, lint, credential and evidence checks passed. Earlier counts below describe the initial release.
+- The published evidence set includes two approved PDFs, portable JSON, embedded-font attribution and checksums. [Approved reports](../reports/) · [Checksums](../reports/SHA256SUMS.txt) · [Architecture](ARCHITECTURE.md) · [Limitations](LIMITATIONS.md)
+
 ## Scope and classifications
 
 The target is the existing public repository `JOTHIRNADHREDDY/SENSA`. Before cleanup, its remote had no references and the local repository had no commits, branches with commits, or reachable Git objects. No shared history was rewritten. The prior working application and its private evidence were preserved.

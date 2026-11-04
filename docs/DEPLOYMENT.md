@@ -26,6 +26,21 @@ docker compose -f docker-compose.yml -f docker-compose.production.yml --profile 
 
 Caddy obtains and persists certificates and proxies to the reviewer. Its administrative interface is disabled. The API, workers and SQLite remain private. This configuration prepares public access once the owner supplies hosting and DNS. No public deployment URL is assigned by the repository.
 
+## Static hosting on Cloudflare Pages
+
+Run from the repository root with Python 3.12 and verify the release before upload.
+
+```sh
+python scripts/validate_release.py
+python scripts/build_static_reviewer.py
+```
+
+The default output is `output/reviewer-static/`. Use `--output` with a new directory for another build. This folder contains only HTML, CSS, browser JavaScript, approved synthetic media and reports, and Cloudflare Pages headers and 404 configuration. It requires no environment variables, API keys, backend services or database.
+
+In an owner-controlled Cloudflare account, create a Pages Direct Upload project and upload the **contents** of that directory. Serve it at the root of its `pages.dev` hostname so the existing `/demo/` and `/reports/` URLs resolve. For a custom hostname, use the Pages project's **Custom domains** settings and follow Cloudflare’s DNS instructions. [Direct Upload](https://developers.cloudflare.com/pages/get-started/direct-upload/) · [Custom domains](https://developers.cloudflare.com/pages/configuration/custom-domains/)
+
+After deployment, open the assigned URL and verify search, source playback and seeks, track samples, frame boxes, provenance, and report downloads. Compare the downloaded report hashes against `reports/SHA256SUMS.txt`. Confirm that `/api/health`, `/.env` and `/demo/videos/parking-lot.webm` are unavailable. A host is ready for reviewers after these checks pass on its deployed URL.
+
 Native reviewer verification with a Caddy 2.10.2 binary is also possible:
 
 ```powershell

@@ -16,6 +16,7 @@ The original Wikimedia WebM was acquired directly from its source. Its SHA-256 i
 | Model sampling | 0–8 seconds at 0.5 fps. Five native inspection frames, three provider requests, and no automatic paid retry. Remaining footage is outside the inspection. |
 | Anonymous associations and episodes | 82 stored detections, 1 person track, 16 object tracks, 10 candidate episodes and 15 event records. Tracks are sampled associations and counts are not physical-object ground truth. |
 | Existing-index discovery and report | PASS. Zero additional provider requests. Portable JSON contains 10 episodes, 82 resolved observations and zero unavailable observation IDs. Summary PDF exported. Human conclusion is empty. |
+| Final saved-record audit | PASS. All 82 observation records match stored timestamps, source and model references. All five native artifact files match their pinned SHA-256. The private PDF and JSON agree with the stored case, report and snapshot hash. All 10 episodes remain unresolved. |
 
 The smoke script initially assumed upload status `succeeded`, prefixed already rooted evidence URLs with a second `/api`, and treated the frame map as a list. The corrected run reused the original upload and saved inspection through the same request key and completed the checks with exit 0. UFPR and VIRAT footage was neither acquired nor tested.
 
