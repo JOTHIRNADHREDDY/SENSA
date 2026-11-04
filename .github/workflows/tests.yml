@@ -6,7 +6,7 @@ permissions:
   contents: read
 jobs:
   backend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-python@v7.1.0
@@ -39,15 +39,17 @@ jobs:
         run: |
           npm install --prefix "$RUNNER_TEMP/reviewer-e2e" --ignore-scripts --no-audit playwright@1.64.1
           docker run -d --name sensa-static-preview -p 127.0.0.1:3003:80 -v "$PWD/output/reviewer-static:/usr/share/caddy:ro" caddy:2.10.2-alpine
-          curl --fail --retry 8 --retry-connrefused http://127.0.0.1:3003/ -o /dev/null
+          curl --fail --retry 8 --retry-all-errors --retry-delay 1 --max-time 10 http://127.0.0.1:3003/ -o /dev/null
           python scripts/check_reviewer.py http://127.0.0.1:3003
           NODE_PATH="$RUNNER_TEMP/reviewer-e2e/node_modules" node scripts/check_reviewer_browser.cjs http://127.0.0.1:3003
       - if: always()
-        run: docker rm -f sensa-static-preview || true
+        run: |
+          docker logs sensa-static-preview || true
+          docker rm -f sensa-static-preview || true
       - if: always()
         run: docker compose down
   frontend:
-    runs-on: ubuntu-latest
+    runs-on: ubuntu-24.04
     steps:
       - uses: actions/checkout@v7.0.1
       - uses: actions/setup-node@v7.1.0
