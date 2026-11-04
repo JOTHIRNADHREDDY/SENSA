@@ -1,0 +1,22 @@
+# Publish the read-only reviewer through HTTPS.
+# The investigator application remains bound to loopback.
+services:
+  gateway:
+    image: caddy:2.10.2-alpine
+    profiles: [reviewer]
+    environment:
+      SENSA_REVIEW_HOST: ${SENSA_REVIEW_HOST:?Set the authorized reviewer hostname}
+    volumes:
+      - ./infra/Caddyfile:/etc/caddy/Caddyfile:ro
+      - certificates:/data
+      - caddy_config:/config
+    ports:
+      - "80:80"
+      - "443:443"
+    depends_on:
+      reviewer:
+        condition: service_healthy
+    restart: unless-stopped
+volumes:
+  certificates:
+  caddy_config:

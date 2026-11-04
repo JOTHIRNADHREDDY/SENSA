@@ -1,0 +1,6 @@
+{
+	admin off
+}
+{$SENSA_REVIEW_HOST} {
+	reverse_proxy reviewer:8080
+}

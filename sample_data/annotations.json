@@ -1,0 +1,17 @@
+{
+  "version": "warehouse-animation-v1",
+  "license": "CC0-1.0; procedural synthetic footage",
+  "source_duration_seconds": 12,
+  "source_dimensions": [960, 540],
+  "source_fps": 10,
+  "cameras": ["Loading dock", "Storage aisle A", "Packing floor", "East exit"],
+  "sampled_timestamps": [0, 2, 4, 6, 8, 10],
+  "expected_events_per_source": [
+    {"type": "person_presence", "start": 2},
+    {"type": "movement", "start": 4},
+    {"type": "zone_entry", "start": 8}
+  ],
+  "irrelevant_segment": {"start": 0, "end": 1.9, "person_visible": false},
+  "ambiguity": {"question": "Who is the thief?", "expected": "insufficient_evidence"},
+  "limitations": "Animation ground truth tests the application pipeline; it is not an independent perception benchmark. Camera clocks and identity are unknown."
+}

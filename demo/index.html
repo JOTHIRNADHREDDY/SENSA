@@ -1,0 +1,54 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <title>SENSA — Evidence review</title>
+    <link rel="stylesheet" href="/demo/review.css">
+    <script defer src="/demo/review.js"></script>
+  </head>
+  <body>
+    <header>
+      <a href="/" class="brand">sensa.</a>
+      <span class="tag">Controlled synthetic investigation</span>
+      <a href="https://github.com/JOTHIRNADHREDDY/SENSA">Source</a>
+    </header>
+    <main>
+      <p class="eyebrow">Cameras that understand. Investigations that find evidence.</p>
+      <h1>Describe → Discover → Reconstruct → Verify</h1>
+      <p>Explore the approved v8 investigation. Search candidate events, replay the original synthetic recordings, and inspect the exported evidence.</p>
+      <p class="notice">UNRESOLVED · Coverage is incomplete. Object continuity and physical removal remain unverified. No human conclusion is recorded. Clock mappings are verified for the synthetic fixtures.</p>
+      <p id="status" role="status">Loading saved evidence…</p>
+      <nav aria-label="Evidence downloads">
+        <a href="/reports/SENSA_Hackathon_Investigation_Summary_FINAL.pdf">Investigation summary</a>
+        <a href="/reports/SENSA_Hackathon_Technical_Evidence_Appendix_FINAL.pdf">Technical appendix</a>
+        <a href="/reports/SENSA_Hackathon_Report_FINAL.json" download>Portable JSON</a>
+        <a href="/reports/SHA256SUMS.txt">Checksums</a>
+        <a href="/demo/walkthrough.mp4">App walkthrough</a>
+      </nav>
+      <section aria-labelledby="timeline-title">
+        <h2 id="timeline-title">Search the event timeline</h2>
+        <label for="search">Search by activity, track, camera, or episode ID</label>
+        <input id="search" type="search" placeholder="Try possible_carry" disabled>
+        <p id="matches" aria-live="polite"></p>
+        <div id="episodes" class="episodes"></div>
+      </section>
+      <section aria-labelledby="player-title">
+        <h2 id="player-title">Review the source recording</h2>
+        <p id="selected">Select an episode to seek to its source interval.</p>
+        <video id="player" controls preload="metadata" playsinline aria-label="Synthetic source recording"></video>
+      </section>
+      <section aria-labelledby="frames-title">
+        <h2 id="frames-title">Four original evidence frames</h2>
+        <p>The PDFs embed these exact native pixels. Frame hashes and source registrations are in the portable JSON.</p>
+        <div id="frames" class="frames"></div>
+      </section>
+      <section>
+        <h2>Shelf comparison</h2>
+        <p>At 4.000 s and 18.100 s, visible detections change from six to five. The separate synthetic renderer reference also changes by one. The accepted comparison remains unresolved. Its shelf region is [0.075, 0.22, 0.54, 0.82].</p>
+        <p>SAM 3.1 supplies saved localization and masks. Muse Spark 1.3 supplies saved scene interpretations. Repeated outputs from one sample do not establish independent corroboration.</p>
+      </section>
+    </main>
+    <footer>Read-only reviewer · Saved synthetic evidence · No model requests</footer>
+  </body>
+</html>

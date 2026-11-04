@@ -1,0 +1,29 @@
+{
+  "name": "sensa-workspace",
+  "version": "1.0.0",
+  "private": true,
+  "scripts": {
+    "dev": "next dev --hostname 127.0.0.1 --port 3001",
+    "build": "next build",
+    "start": "next start --hostname 127.0.0.1 --port 3001",
+    "typecheck": "tsc --noEmit",
+    "lint": "tsc --noEmit --noUnusedLocals --noUnusedParameters --allowUnreachableCode false",
+    "test": "node --experimental-strip-types --test tests/core.test.ts",
+    "format:check": "prettier --check app components tests next.config.ts tsconfig.json package.json",
+    "format": "prettier --write app components tests next.config.ts tsconfig.json package.json"
+  },
+  "dependencies": {
+    "lucide-react": "0.577.0",
+    "next": "16.4.3",
+    "react": "19.3.1",
+    "react-dom": "19.3.1"
+  },
+  "devDependencies": {
+    "@types/node": "25.3.3",
+    "@types/react": "19.2.14",
+    "@types/react-dom": "19.2.3",
+    "prettier": "3.8.1",
+    "typescript": "5.9.3"
+  },
+  "type": "module"
+}

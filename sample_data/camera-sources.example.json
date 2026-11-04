@@ -1,0 +1,11 @@
+[
+  {
+    "id": "loading_dock",
+    "label": "Loading dock",
+    "input_env": "SENSA_CAMERA_LOADING_DOCK",
+    "owner_id": "REPLACE_WITH_ADMINISTRATOR_USER_ID",
+    "segment_seconds": 30,
+    "interval_seconds": 60,
+    "enabled": false
+  }
+]

@@ -1,0 +1,28 @@
+:root { color-scheme: dark; font-family: system-ui, sans-serif; background: #0b1220; color: #eaf2f8; }
+* { box-sizing: border-box; }
+body { margin: 0; }
+header, main, footer { max-width: 1120px; margin: auto; padding: 24px; }
+header { display: flex; align-items: center; gap: 20px; flex-wrap: wrap; border-bottom: 1px solid #243247; }
+.brand { font-size: 30px; font-weight: 800; text-decoration: none; }
+a { color: #2dd4bf; overflow-wrap: anywhere; }
+a:hover { color: #eaf2f8; }
+:focus-visible { outline: 3px solid #2dd4bf; outline-offset: 4px; }
+h1 { font-size: clamp(30px, 4vw, 46px); letter-spacing: -1px; }
+h2 { font-size: 24px; }
+p { line-height: 1.65; color: #9fb0c4; }
+.tag, .eyebrow { color: #2dd4bf; font-size: 14px; }
+.notice { padding: 18px; background: #172337; border-left: 3px solid #fbbf24; color: #eaf2f8; }
+nav { display: flex; flex-wrap: wrap; gap: 18px; margin: 24px 0; }
+section { margin-top: 42px; }
+label { display: block; color: #9fb0c4; margin-bottom: 10px; }
+input { width: 100%; background: #111c2e; color: #eaf2f8; border: 1px solid #71839b; padding: 14px; font: inherit; border-radius: 8px; }
+.episodes { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 300px), 1fr)); gap: 14px; }
+.episode { text-align: left; background: #172337; color: #eaf2f8; padding: 18px; border: 1px solid #243247; border-radius: 8px; cursor: pointer; font: inherit; }
+.episode[aria-pressed="true"] { border-color: #2dd4bf; }
+.episode small { display: block; color: #9fb0c4; overflow-wrap: anywhere; line-height: 1.6; margin-top: 10px; }
+video { width: 100%; max-height: 600px; background: #111c2e; border-radius: 8px; }
+.frames { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 24px; }
+figure { margin: 0; padding: 12px; background: #111c2e; border-radius: 8px; }
+figure img { width: 100%; height: auto; }
+figcaption { color: #9fb0c4; line-height: 1.5; overflow-wrap: anywhere; font-size: 13px; }
+footer { color: #9fb0c4; border-top: 1px solid #243247; margin-top: 48px; font-size: 13px; }

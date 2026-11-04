@@ -1,0 +1,23 @@
+{
+	admin off
+	auto_https off
+}
+:8080 {
+	bind {$SENSA_REVIEW_BIND:0.0.0.0}
+	root * {$SENSA_REVIEW_ROOT:/srv}
+	encode gzip
+	header {
+		X-Content-Type-Options nosniff
+		Referrer-Policy no-referrer
+		Content-Security-Policy "default-src 'self'; script-src 'self'; style-src 'self'; img-src 'self'; media-src 'self'; object-src 'none'; frame-ancestors 'none'; base-uri 'none'"
+	}
+	@write not method GET HEAD
+	respond @write 405
+	@root path /
+	rewrite @root /demo/index.html
+	@approved path /demo/* /reports/*
+	handle @approved {
+		file_server
+	}
+	respond 404
+}
