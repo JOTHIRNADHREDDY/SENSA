@@ -21,12 +21,20 @@ input { width: 100%; background: #111c2e; color: #eaf2f8; border: 1px solid #718
 .episode[aria-pressed="true"] { border-color: #2dd4bf; }
 .episode small { display: block; color: #9fb0c4; overflow-wrap: anywhere; line-height: 1.6; margin-top: 10px; }
 video { width: 100%; max-height: 600px; background: #111c2e; border-radius: 8px; }
+.player-stage { position: relative; }
+.player-stage video { display: block; }
+#player-overlay { position: absolute; pointer-events: none; overflow: visible; }
+#player-overlay .person .track-box { stroke: #2dd4bf; }
+#player-overlay .object .track-box { stroke: #fbbf24; }
+#player-overlay .track-box { fill: none; stroke-width: 2; vector-effect: non-scaling-stroke; }
+#player-overlay .track-tag { fill: #0b1220; fill-opacity: .88; }
+#player-overlay .track-label { fill: #eaf2f8; stroke: none; font: 12px system-ui, sans-serif; }
 .frames { display: grid; grid-template-columns: repeat(auto-fit, minmax(min(100%, 380px), 1fr)); gap: 24px; }
 figure { margin: 0; padding: 12px; background: #111c2e; border-radius: 8px; }
 figure img { width: 100%; height: auto; }
 figcaption { color: #9fb0c4; line-height: 1.5; overflow-wrap: anywhere; font-size: 13px; }
 footer { color: #9fb0c4; border-top: 1px solid #243247; margin-top: 48px; font-size: 13px; }
-select, #overlay-toggle { padding: 10px; font: inherit; color: #eaf2f8; background: #172337; border: 1px solid #71839b; border-radius: 6px; }
+select, #overlay-toggle, #tracking-toggle { padding: 10px; font: inherit; color: #eaf2f8; background: #172337; border: 1px solid #71839b; border-radius: 6px; }
 #frame-select { max-width: 100%; }
 #frame-inspection { margin-top: 16px; overflow-wrap: anywhere; }
 .inspection-image { position: relative; max-width: 720px; }

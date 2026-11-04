@@ -36,7 +36,12 @@
       <section aria-labelledby="player-title">
         <h2 id="player-title">Review the source recording</h2>
         <p id="selected">Select an episode to seek to its source interval.</p>
-        <video id="player" controls preload="metadata" playsinline aria-label="Synthetic source recording"></video>
+        <div class="player-stage">
+          <video id="player" controls preload="metadata" playsinline aria-label="Synthetic source recording" aria-describedby="player-evidence"></video>
+          <svg id="player-overlay" aria-hidden="true"></svg>
+        </div>
+        <button id="tracking-toggle" type="button" aria-pressed="true" disabled>Tracking labels</button>
+        <p id="player-evidence" aria-live="polite">Select an episode to inspect saved tracking samples.</p>
       </section>
       <section aria-labelledby="frames-title">
         <h2 id="frames-title">Four original evidence frames</h2>

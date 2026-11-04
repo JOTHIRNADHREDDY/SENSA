@@ -6,10 +6,113 @@ const sources = new Map();
 let episodes = [];
 const frameSelect = document.getElementById("frame-select");
 const overlayToggle = document.getElementById("overlay-toggle");
+const trackingToggle = document.getElementById("tracking-toggle");
+const playerOverlay = document.getElementById("player-overlay");
+const playerEvidence = document.getElementById("player-evidence");
 const svgNamespace = "http://www.w3.org/2000/svg";
+const trackingSamples = new Map();
+let activeAssetId = null;
+
+function positionPlayerOverlay() {
+  if (!player.videoWidth || !player.videoHeight) return;
+  const scale = Math.min(player.clientWidth / player.videoWidth, player.clientHeight / player.videoHeight);
+  const width = player.videoWidth * scale;
+  const height = player.videoHeight * scale;
+  playerOverlay.style.left = (player.clientWidth - width) / 2 + "px";
+  playerOverlay.style.top = (player.clientHeight - height) / 2 + "px";
+  playerOverlay.style.width = width + "px";
+  playerOverlay.style.height = height + "px";
+  playerOverlay.setAttribute("viewBox", `0 0 ${player.videoWidth} ${player.videoHeight}`);
+}
+
+function renderPlayerTracking() {
+  playerOverlay.replaceChildren();
+  if (!activeAssetId || !player.videoWidth || trackingToggle.getAttribute("aria-pressed") !== "true") {
+    playerEvidence.textContent = "Tracking labels hidden or no source selected.";
+    return;
+  }
+  positionPlayerOverlay();
+  const samples = trackingSamples.get(activeAssetId) || [];
+  const nearest = samples.reduce((best, sample) =>
+    !best || Math.abs(sample.timestamp - player.currentTime) < Math.abs(best.timestamp - player.currentTime)
+      ? sample : best, null);
+  // These are sampled model outputs. Never imply a continuous track through unsampled footage.
+  if (!nearest || Math.abs(nearest.timestamp - player.currentTime) > 0.13) {
+    playerEvidence.textContent = "No saved tracking sample at " + player.currentTime.toFixed(3) + " s.";
+    return;
+  }
+  for (const track of nearest.tracks) {
+    const [left, top, right, bottom] = track.box;
+    const x = left * player.videoWidth;
+    const y = top * player.videoHeight;
+    const width = (right - left) * player.videoWidth;
+    const height = (bottom - top) * player.videoHeight;
+    const kind = track.category === "person" ? "person" : "object";
+    const group = document.createElementNS(svgNamespace, "g");
+    group.setAttribute("class", kind);
+    const title = document.createElementNS(svgNamespace, "title");
+    title.textContent = track.category + " · anonymous track " + track.id;
+    const box = document.createElementNS(svgNamespace, "rect");
+    box.setAttribute("class", "track-box");
+    for (const [key, value] of Object.entries({ x, y, width, height })) box.setAttribute(key, value);
+    const shortId = track.id.split(":").at(-1).slice(1, 5);
+    const category = track.category === "person" ? "Person" :
+      track.category === "shelf" ? "Shelf" : "Box";
+    const caption = category + " " + shortId;
+    const tagWidth = Math.min(player.videoWidth, caption.length * 7 + 10);
+    const tagX = Math.max(0, Math.min(x, player.videoWidth - tagWidth));
+    const tagY = y >= 19 ? y - 18 : y + 2;
+    const tag = document.createElementNS(svgNamespace, "rect");
+    tag.setAttribute("class", "track-tag");
+    for (const [key, value] of Object.entries({ x: tagX, y: tagY, width: tagWidth, height: 17 })) tag.setAttribute(key, value);
+    const label = document.createElementNS(svgNamespace, "text");
+    label.setAttribute("class", "track-label");
+    label.setAttribute("x", tagX + 5);
+    label.setAttribute("y", tagY + 12);
+    label.textContent = caption;
+    group.append(title, box, tag, label);
+    playerOverlay.append(group);
+  }
+  playerEvidence.textContent = "Saved sample " + nearest.timestamp.toFixed(3) + " s · " +
+    nearest.tracks.length + " anonymous tracks · labels are sampled observations.";
+}
+
+function indexTrackingSamples(content) {
+  const observations = new Map(content.observations.map((row) => [row.id, row]));
+  const byAsset = new Map();
+  for (const node of [...content.anonymous_tracks, ...content.object_tracks]) {
+    const track = node.data;
+    for (const id of track.observations) {
+      const observation = observations.get(id);
+      if (!observation || observation.evidence_status !== "available" || !Array.isArray(observation.box)) continue;
+      if (!byAsset.has(observation.asset_id)) byAsset.set(observation.asset_id, new Map());
+      const frames = byAsset.get(observation.asset_id);
+      if (!frames.has(observation.frame_id)) frames.set(observation.frame_id, {
+        timestamp: observation.timestamp, tracks: [], seen: new Set(),
+      });
+      const sample = frames.get(observation.frame_id);
+      if (sample.seen.has(track.id)) continue;
+      sample.seen.add(track.id);
+      sample.tracks.push({ id: track.id, category: track.category, box: observation.box });
+    }
+  }
+  for (const [assetId, frames] of byAsset) {
+    trackingSamples.set(assetId, [...frames.values()].sort((a, b) => a.timestamp - b.timestamp));
+  }
+}
+
+player.addEventListener("loadedmetadata", renderPlayerTracking);
+player.addEventListener("timeupdate", renderPlayerTracking);
+player.addEventListener("seeked", renderPlayerTracking);
+window.addEventListener("resize", positionPlayerOverlay);
+trackingToggle.addEventListener("click", () => {
+  trackingToggle.setAttribute("aria-pressed", String(trackingToggle.getAttribute("aria-pressed") !== "true"));
+  renderPlayerTracking();
+});
 
 function seekSource(assetId, time, description) {
   const source = sources.get(assetId);
+  activeAssetId = assetId;
   const next = new URL(source.video, location.href).href;
   if (player.src !== next) {
     player.src = source.video;
@@ -18,6 +121,7 @@ function seekSource(assetId, time, description) {
   player.onloadedmetadata = () => { player.currentTime = time; };
   if (player.readyState >= 1) player.currentTime = time;
   document.getElementById("selected").textContent = source.name + " · " + description;
+  renderPlayerTracking();
 }
 
 function selectEpisode(episode, button) {
@@ -137,6 +241,8 @@ async function load() {
       video: "/demo/sources/synthetic-camera-" + (index + 1) + ".mp4",
     }));
     episodes = report.content.event_episodes;
+    indexTrackingSamples(report.content);
+    trackingToggle.disabled = false;
     status.textContent = "Snapshot v8 · " + episodes.length + " episodes · " +
       report.content.observations.length + " detection records · " + report.id;
     const { images, comparison } = report.evidence_manifest;
