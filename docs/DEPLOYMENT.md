@@ -41,6 +41,19 @@ In an owner-controlled Cloudflare account, create a Pages Direct Upload project 
 
 After deployment, open the assigned URL and verify search, source playback and seeks, track samples, frame boxes, provenance, and report downloads. Compare the downloaded report hashes against `reports/SHA256SUMS.txt`. Confirm that `/api/health`, `/.env` and `/demo/videos/parking-lot.webm` are unavailable. A host is ready for reviewers after these checks pass on its deployed URL.
 
+## Live dashboard on workers.dev with the backend on this computer
+
+The root `wrangler.jsonc` publishes the read-only reviewer. To serve the actual investigator dashboard on the same Worker name, use `wrangler.live.example.jsonc` as a separate deployment configuration. Its static export contains the real Next.js dashboard, while `workers/live.mjs` forwards `/api/*` through a private Cloudflare Workers VPC Service to FastAPI on this computer. The database, workers, footage and model key stay on this computer. This requires a persistent Cloudflare Tunnel and an HTTP VPC Service; a GitHub static build alone cannot provide the backend.
+
+1. While the local workspace is open, create a separate administrator account in **Settings** with a password you know. Do not put that password in Git or Cloudflare configuration. The existing local access account's generated password is not recoverable.
+2. In Cloudflare, [create a managed Tunnel](https://developers.cloudflare.com/workers-vpc/configuration/tunnel/) with `cloudflared` running on this computer. [Create an HTTP Workers VPC Service](https://developers.cloudflare.com/workers-vpc/configuration/vpc-services/) through that tunnel targeting `127.0.0.1` on port `8001`. Record its VPC Service ID, which is an identifier, not a credential. Assign the account the required Connectivity Directory Bind role.
+3. Configure the private `.env` for `SENSA_ENV=production`, `SENSA_AUTH_MODE=signin`, and `SENSA_ORIGINS=https://sensa.<your-account>.workers.dev`. Keep `MODEL_API_KEY` private. Stop the existing local-mode processes, then start the application with `scripts/start.ps1 -Production -Background -Workers 2` and verify `http://127.0.0.1:8001/api/health` reports `auth_mode=signin` and active workers. The login page will be public; evidence requires a session.
+4. Build the dashboard from the repository root. In PowerShell: `$env:SENSA_STATIC_EXPORT='1'; npm --prefix frontend ci; npm --prefix frontend run build; Remove-Item Env:SENSA_STATIC_EXPORT`. On Linux or macOS: `npm --prefix frontend ci && SENSA_STATIC_EXPORT=1 npm --prefix frontend run build`. This creates ignored `frontend/out/` with no secrets.
+5. Copy `wrangler.live.example.jsonc` to ignored `wrangler.live.jsonc` and replace `REPLACE_WITH_YOUR_VPC_SERVICE_ID` with the VPC Service ID. Deploy explicitly with `npx wrangler deploy --config wrangler.live.jsonc` from the repository root. This replaces the read-only reviewer at the same `sensa` workers.dev Worker. The template contains no token or password; authenticate Wrangler privately.
+6. At the public URL, verify the login page, sign in with the new administrator account, open the dashboard, check `/api/health` reports sign-in mode, and test an authorized source request. Confirm the Worker does not serve local evidence or `.env` as static assets. Keep the computer, FastAPI, workers and `cloudflared` running for the live dashboard to work.
+
+Do not switch the public Worker to the live configuration until the Tunnel, VPC Service and sign-in backend are ready. The existing reviewer remains available until that explicit deployment.
+
 Native reviewer verification with a Caddy 2.10.2 binary is also possible:
 
 ```powershell

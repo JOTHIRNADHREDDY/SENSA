@@ -66,3 +66,6 @@ jobs:
           npm run typecheck
           npm run lint
           npm audit --audit-level=moderate
+          SENSA_STATIC_EXPORT=1 npm run build
+          test -f out/index.html
+          node --test ../scripts/check_live_worker.mjs
