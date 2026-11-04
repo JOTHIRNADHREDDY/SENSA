@@ -14,7 +14,7 @@ The target is the existing public repository `JOTHIRNADHREDDY/SENSA`. Before cle
 | RETAINED | `backend/app/`, `backend/tests/`, `frontend/app/`, `frontend/components/`, `frontend/tests/` | Working integrations, intelligence, source-bound evidence, persistence, review/export and regression coverage. Worker implementation stays in `backend/app/worker.py`. |
 | RETAINED | Python manifests, npm lockfile, migrations in `backend/app/db.py`, API v2/v3 docs | Reproducible installation and supported optional database configuration. |
 | RETAINED | `sample_data/`, generator, launch/replay/evaluation tools | Required procedural fixtures and supported maintenance. |
-| RETAINED | `reports/` | One byte-identical approved v8 copy of each final PDF and JSON, with SHA256SUMS. |
+| RETAINED | `reports/` | One byte-identical approved v8 copy of each final PDF and JSON, with SHA256SUMS and the embedded Vera font notice. |
 | RETAINED | `demo/` | Approved synthetic source clips, four exact native PNGs, walkthrough, two selected UI captures, and read-only reviewer. |
 | ARCHIVED | Private `data/`, `output/`, `tmp/`, old root status files and historical writeups | Remain local and ignored. The old v7 release and irreplaceable evidence stay intact. |
 | ARCHIVED | Legacy `scripts/package_hackathon_release.py` | Local utility for historical release layout. It is excluded from the public repository. |
