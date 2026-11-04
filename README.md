@@ -2,7 +2,9 @@
 
 **Cameras that understand. Investigations that find evidence.**
 
-[Live dashboard](https://sensa.p-jothirnadh1.workers.dev/) · [GitHub source](https://github.com/JOTHIRNADHREDDY/SENSA) · [Demo video](demo/walkthrough.mp4) · [Investigation summary](reports/SENSA_Hackathon_Investigation_Summary_FINAL.pdf) · [Technical appendix](reports/SENSA_Hackathon_Technical_Evidence_Appendix_FINAL.pdf)
+**Live preview:** [Open the SENSA dashboard](https://sensa.p-jothirnadh1.workers.dev/)
+
+[GitHub source](https://github.com/JOTHIRNADHREDDY/SENSA) · [Demo video](demo/walkthrough.mp4) · [Investigation summary](reports/SENSA_Hackathon_Investigation_Summary_FINAL.pdf) · [Technical appendix](reports/SENSA_Hackathon_Technical_Evidence_Appendix_FINAL.pdf)
 
 SENSA turns authorized CCTV recordings into searchable investigations. Describe what is missing or what to find, choose the recordings, and discover candidate people, objects, interactions, and time intervals without knowing the incident timestamp. Open each finding’s original footage, source-relative timestamp, and evidence before deciding what it supports.
 
