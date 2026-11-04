@@ -35,3 +35,21 @@ The executable OpenAPI schema is served at `http://127.0.0.1:8001/openapi.json`,
 | GET `/audit/verify` | Verify local chain; admin |
 
 Every nonpublic endpoint checks authentication server-side. Missing unauthorized asset/case IDs return 404 to avoid disclosing existence. Viewer role is read-only. Case membership allows access to case-linked source assets, not unrelated sources. Admin authority applies only to the one local organization. Counts/list endpoints are bounded to 500 assets/cases and 1,000 candidate events; this prototype is not a large-fleet API.
+
+## Current investigation and operations routes
+
+See [intelligence routes](API_V2.md) and [discovery routes](API_V3.md) for camera clocks, source inspection, graphs, stock comparison, discovery and finding review. The executable OpenAPI document remains the full route/schema inventory.
+
+| Method / path | Purpose / permission |
+| --- | --- |
+| GET `/reports/{id}/portable/json` | Authorized case reader. Portable snapshot plus resolved detection records, candidate interaction clusters and evidence manifest. Missing records keep an explicit unavailable reason. |
+| GET `/reports/{id}/portable/summary` | Concise PDF with verified native images from the saved report. |
+| GET `/reports/{id}/portable/appendix` | Technical PDF including historical comparison attempts, episode index, provenance and native image audit. |
+| GET `/reports/{id}/portable/manifest` | Report identity, canonical stored snapshot SHA-256, all episode IDs, separate headline IDs, source registrations and image hashes. |
+| GET `/operations` | Worker/queue, retention and camera status, administrator only. |
+| PUT `/operations/retention` | Configure retention, administrator only. |
+| POST `/operations/retention/run` | Apply eligible reversible quarantine, administrator only. |
+| POST `/operations/quarantine/{asset_id}/restore` | Restore quarantined data, administrator only. |
+| POST `/operations/cameras/{camera_id}/capture` | Capture a configured enabled source, administrator only. |
+
+The static reviewer serves approved files over GET/HEAD and rejects writes. It does not proxy any of these API routes.

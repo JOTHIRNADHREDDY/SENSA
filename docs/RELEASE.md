@@ -7,7 +7,7 @@ The target is the existing public repository `JOTHIRNADHREDDY/SENSA`. Before cle
 | Classification | Paths | Reason and action |
 | --- | --- | --- |
 | CLEANED | `README.md`, `docs/ARCHITECTURE.md`, `docs/SETUP.md`, `docs/AI_MODELS.md`, `docs/LIMITATIONS.md`, `docs/SECURITY_AND_PRIVACY.md` | Canonical current documentation replaces repeated version-specific narrative. |
-| CLEANED | `.gitignore`, `.dockerignore` | Exclude credentials, private state, generated caches, legacy exports, diagnostics, and unapproved media. |
+| CLEANED | `.gitignore`, `.dockerignore`, `.gitattributes` | Exclude private/generated material and preserve the exact approved PDF and JSON bytes across Git checkouts. |
 | CLEANED | `frontend/app/page.tsx` | Removed five unused icon imports and an unused callback index. Runtime behavior is preserved. |
 | CLEANED | `frontend/package.json`, `scripts/verify.ps1` | Added TypeScript unused-code and unreachable-code lint to the existing verification flow. |
 | CLEANED | `docker-compose*.yml`, `frontend/Dockerfile`, `backend/Dockerfile`, `infra/` | One shared SQLite/media volume, two external workers, health checks, and a separate static HTTPS reviewer. |
@@ -72,3 +72,9 @@ The Git commit author uses the verified GitHub owner login and public-ID noreply
 `scripts/publication_check.py` scans proposed release paths and all reachable Git blobs for common token/private-key patterns, personal Windows paths, and the configured model credential. It checks the built frontend for that credential and verifies relative Markdown links. The private `.env` retains the configured secret locally and is excluded from Git and container build contexts. Generated databases, raw provider results, legacy reports, unapproved real footage and installed dependencies are excluded.
 
 The original repository had no reachable history to clean. A source/history scan can establish what was inspected and is not a guarantee that every possible secret form can be recognized.
+
+## GitHub verification
+
+Implementation commit `05c6a85921395cb8753f2c904b07d131687d57fa` was pushed successfully to the existing repository’s `main` branch. The working tree was clean afterward. The post-push scan covered all 115 publication files and 135 reachable Git objects. An unauthenticated download verified the committed bytes of the README, reviewer script, screenshot, walkthrough, both PDFs, JSON and checksum file. The unauthenticated GitHub HTML contained the rendered README and its report/screenshot links.
+
+[GitHub Actions run 41840628503](https://github.com/JOTHIRNADHREDDY/SENSA/actions/runs/41840628503) completed with **success** for both jobs. Backend and frontend tests passed on the runner. Both Compose configurations passed, all three images built, and the shared SQLite stack started successfully with two workers. The reviewer HTTP evidence/range/isolation checks passed inside that stack. The services shut down successfully afterward. These runner checks supplement the local results and resolve the container-execution verification gap for this release. Owner-provided HTTPS hosting/DNS and a visual browser review remain separate.
