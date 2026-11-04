@@ -2,6 +2,7 @@
 
 import re
 import subprocess
+import json
 from pathlib import Path
 
 ROOT = Path(__file__).resolve().parents[1]
@@ -38,14 +39,24 @@ def main():
         .split("\0")
     )
     errors = []
-    key = b""
+    secrets = set()
     private = ROOT / ".env"
     if private.is_file():
-        match = re.search(rb"(?m)^MODEL_API_KEY\s*=\s*([^\r\n]+)", private.read_bytes())
-        key = match[1].strip().strip(b"\"'") if match else b""
+        for name, value in re.findall(
+            rb"(?m)^([A-Z_][A-Z0-9_]*)[ \t]*=[ \t]*([^\r\n]+)", private.read_bytes()
+        ):
+            if re.search(rb"KEY|TOKEN|SECRET|PASSWORD", name):
+                value = value.strip().strip(b"\"'")
+                if value:
+                    secrets.add(value)
+    access = ROOT / "data/local-access.json"
+    if access.is_file():
+        value = json.loads(access.read_text(encoding="utf-8")).get("password")
+        if value:
+            secrets.add(value.encode())
 
     def check(name, data):
-        if TOKEN.search(data) or (key and key in data):
+        if TOKEN.search(data) or any(value in data for value in secrets):
             errors.append(f"Sensitive content in {name}")
 
     for name in names:
@@ -64,10 +75,12 @@ def main():
         oid, _, name = line.partition(" ")
         if git("cat-file", "-t", oid).strip() == b"blob":
             check(f"history {oid} {name}", git("cat-file", "blob", oid))
-    # Inspect generated JavaScript for the configured credential, separately from publishable files.
-    for path in (ROOT / "frontend/.next").rglob("*.js"):
-        if key and key in path.read_bytes():
-            errors.append("Configured credential in frontend build")
+    # Check client build artifacts separately from the proposed public files.
+    for path in (ROOT / "frontend/.next").rglob("*"):
+        if path.is_file() and path.suffix in {".js", ".json", ".html", ".map"}:
+            data = path.read_bytes()
+            if any(value in data for value in secrets):
+                errors.append("Configured credential in frontend build")
     for name in names:
         if not name.endswith(".md"):
             continue

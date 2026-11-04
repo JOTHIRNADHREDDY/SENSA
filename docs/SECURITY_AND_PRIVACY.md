@@ -1,6 +1,6 @@
 # Security and privacy
 
-Credentials are read server-side from environment variables. The repository’s `.env.example` contains placeholders. Private data, credentials, media, raw model results, caches and build output are excluded from publication. The release scanner checks proposed files and reachable Git history and separately searches built JavaScript for the configured credential.
+Credentials are read server-side from environment variables. The repository’s `.env.example` contains placeholders. Private data, credentials, media, raw model results, caches and build output are excluded from publication. The release scanner checks proposed files and reachable Git history against configured keys, tokens, secrets, passwords and the private bootstrap password. It also checks frontend JavaScript, JSON, HTML and source maps for those values. Both frontend and backend Docker contexts exclude environment and private-key files. Regression tests inject artificial credentials to verify rejection without printing their values.
 
 Users authenticate through salted scrypt passwords and random opaque sessions whose hashes are stored in the database. Cookies are HttpOnly and SameSite Strict. Production configuration requires HTTPS and secure cookies. Mutating browser requests validate Origin. Asset and case access is checked in the backend. Optional local mode permits same-origin loopback access and is rejected in production.
 
